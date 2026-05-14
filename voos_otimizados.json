@@ -1,0 +1,82 @@
+{
+  "flightState": [
+    {
+      "confirmed": true,
+      "expanded": false,
+      "airline": "LATAM",
+      "number": "GOL ou LATAM",
+      "departure": "",
+      "arrival": "",
+      "seat": "",
+      "terminal": "",
+      "obs": "R$ 250 - 350 | Antecipação para garantir 21 e 22/06 em SP",
+      "idealDep": "",
+      "idealArr": ""
+    },
+    {
+      "confirmed": true,
+      "expanded": false,
+      "airline": "GOL",
+      "number": "LATAM ou GOL",
+      "departure": "",
+      "arrival": "",
+      "seat": "",
+      "terminal": "",
+      "obs": "R$ 155 - 210 | Voo de terça-feira (mais barato)",
+      "idealDep": "",
+      "idealArr": ""
+    },
+    {
+      "confirmed": true,
+      "expanded": false,
+      "airline": "GOL",
+      "number": "",
+      "departure": "",
+      "arrival": "",
+      "seat": "",
+      "terminal": "",
+      "obs": "R$ 1.048 - 1.200 | Voo direto de quinta-feira (preço promocional)",
+      "idealDep": "",
+      "idealArr": ""
+    },
+    {
+      "confirmed": true,
+      "expanded": false,
+      "airline": "GOL",
+      "number": "Azul ou GOL",
+      "departure": "",
+      "arrival": "",
+      "seat": "",
+      "terminal": "",
+      "obs": "R$ 380 - 580 | Início dos 7 dias em Maceió",
+      "idealDep": "",
+      "idealArr": ""
+    },
+    {
+      "confirmed": true,
+      "expanded": false,
+      "airline": "GOL",
+      "number": "",
+      "departure": "",
+      "arrival": "",
+      "seat": "",
+      "terminal": "",
+      "obs": "R$ 380 - 580 | Retorno para os 2 dias finais em Salvador",
+      "idealDep": "",
+      "idealArr": ""
+    },
+    {
+      "confirmed": true,
+      "expanded": false,
+      "airline": "GOL",
+      "number": "",
+      "departure": "",
+      "arrival": "",
+      "seat": "",
+      "terminal": "",
+      "obs": "R$ 400 - 600 | Procrastinado: Voo direto final",
+      "idealDep": "",
+      "idealArr": ""
+    }
+  ]
+}

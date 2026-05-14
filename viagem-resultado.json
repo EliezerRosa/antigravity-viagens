@@ -1,0 +1,38 @@
+{
+  "flightState": [
+    { "confirmed": true, "expanded": false, "airline": "LATAM", "number": "LA3184", "departure": "09:00", "arrival": "10:30", "seat": "", "terminal": "", "obs": "Tarifa Light (com bagagem)", "idealDep": "", "idealArr": "" },
+    { "confirmed": true, "expanded": false, "airline": "Azul", "number": "AD4190", "departure": "14:00", "arrival": "15:00", "seat": "", "terminal": "", "obs": "Promoção encontrada", "idealDep": "", "idealArr": "" },
+    { "confirmed": true, "expanded": false, "airline": "GOL", "number": "G32040", "departure": "11:30", "arrival": "13:45", "seat": "", "terminal": "", "obs": "Único direto aos sábados", "idealDep": "", "idealArr": "" },
+    { "confirmed": true, "expanded": false, "airline": "GOL", "number": "G31822", "departure": "10:00", "arrival": "11:15", "seat": "", "terminal": "", "obs": "", "idealDep": "", "idealArr": "" },
+    { "confirmed": true, "expanded": false, "airline": "Azul", "number": "AD4560", "departure": "15:30", "arrival": "16:45", "seat": "", "terminal": "", "obs": "", "idealDep": "", "idealArr": "" },
+    { "confirmed": true, "expanded": false, "airline": "GOL", "number": "G32001", "departure": "08:15", "arrival": "09:40", "seat": "", "terminal": "", "obs": "", "idealDep": "", "idealArr": "" }
+  ],
+  "hotelState": [
+    { "confirmed": true, "expanded": false, "code": "BKG-123", "checkinTime": "14:00", "checkoutTime": "12:00", "room": "Standard", "diaria": "280", "totalValue": "3080", "paid": "", "payMethod": "", "payStatus": "", "obs": "Café da manhã incluso" },
+    { "confirmed": true, "expanded": false, "code": "BKG-456", "checkinTime": "14:00", "checkoutTime": "12:00", "room": "Superior", "diaria": "250", "totalValue": "250", "paid": "", "payMethod": "", "payStatus": "", "obs": "Piscina e boa localização" },
+    { "confirmed": true, "expanded": false, "code": "BKG-789", "checkinTime": "14:00", "checkoutTime": "12:00", "room": "Frente Mar", "diaria": "320", "totalValue": "2240", "paid": "", "payMethod": "", "payStatus": "", "obs": "Ótima avaliação" }
+  ],
+  "expState": [
+    { "id": 1, "category": "✈️ Aéreo", "item": "6 Trechos Diretos (pesquisado)", "estimated": 3143, "paid": "2287" },
+    { "id": 2, "category": "🏨 Hotel", "item": "19 noites (custo-benefício)", "estimated": 2795, "paid": "5570" },
+    { "id": 3, "category": "🥗 Alimentação", "item": "Diária Orgânicos (25 dias)", "estimated": 3750, "paid": "" },
+    { "id": 4, "category": "🚗 Transporte", "item": "Uber/Táxi (25 dias)", "estimated": 1500, "paid": "" }
+  ],
+  "aiState": {
+    "flightOptions": [
+      { "trecho": "0", "servico": "Google Flights", "companhia": "LATAM", "preco": "255", "partida": "09:00", "chegada": "10:30", "escalas": "0" },
+      { "trecho": "1", "servico": "Google Flights", "companhia": "Azul", "preco": "199", "partida": "14:00", "chegada": "15:00", "escalas": "0" },
+      { "trecho": "2", "servico": "Google Flights", "companhia": "GOL", "preco": "550", "partida": "11:30", "chegada": "13:45", "escalas": "0" },
+      { "trecho": "3", "servico": "Google Flights", "companhia": "GOL", "preco": "493", "partida": "10:00", "chegada": "11:15", "escalas": "0" },
+      { "trecho": "4", "servico": "Google Flights", "companhia": "Azul", "preco": "380", "partida": "15:30", "chegada": "16:45", "escalas": "0" },
+      { "trecho": "5", "servico": "Google Flights", "companhia": "GOL", "preco": "410", "partida": "08:15", "chegada": "09:40", "escalas": "0" }
+    ],
+    "hotelOptions": [
+      { "cidade": "Curitiba", "hotel": "Slaviero Centro", "precoNoite": "280", "avaliacao": "8.5", "servico": "Booking", "obs": "Café da manhã incluso, boa localização" },
+      { "cidade": "Salvador", "hotel": "Hotel Pituba Praiamar", "precoNoite": "250", "avaliacao": "8.2", "servico": "Booking", "obs": "Próximo à praia, piscina" },
+      { "cidade": "Maceió", "hotel": "Hotel Brisa Praia", "precoNoite": "320", "avaliacao": "9.0", "servico": "Booking", "obs": "Excelente café da manhã, vista mar" }
+    ],
+    "lastResult": "🏆 ANÁLISE CONCLUÍDA\n\nTodos os trechos aéreos foram preenchidos com os melhores preços reais para voos diretos. Os hotéis também foram definidos baseados no melhor custo-benefício.",
+    "mode": "flight"
+  }
+}

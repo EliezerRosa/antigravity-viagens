@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/viagem-brasil_2.html" }
+  ]
+}
