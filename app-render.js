@@ -50,11 +50,11 @@ function searchPanel(services, type, isOpen=true) {
 
 function openAllFlightServices(e) {
   const idx = e.target.closest('.card')?.dataset?.idx;
-  if(idx!==undefined) getFlightServices(flights[idx]).forEach(s => window.open(s.url,'_blank'));
+  if(idx!==undefined) getFlightServices(flightState[idx]).forEach(s => window.open(s.url,'_blank'));
 }
 function openAllHotelServices(e) {
   const idx = e.target.closest('.card')?.dataset?.idx;
-  if(idx!==undefined) getHotelServices(hotels[idx]).forEach(s => window.open(s.url,'_blank'));
+  if(idx!==undefined) getHotelServices(hotelState[idx]).forEach(s => window.open(s.url,'_blank'));
 }
 
 // ─── ROUTE CHIPS ─────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ function render() {
   const c=document.getElementById("content");
   if(activeTab===0) c.innerHTML=renderFlights();
   if(activeTab===1) c.innerHTML=renderHotels();
-  if(activeTab===2) c.innerHTML=renderOrganic();
+  if(activeTab===2) c.innerHTML=renderMeals();
   if(activeTab===3) c.innerHTML=renderExpenses();
   if(activeTab===4) c.innerHTML=renderAI();
 
@@ -83,31 +83,56 @@ function render() {
 // ─── FLIGHTS ─────────────────────────────────────────────────────────────────
 function renderFlights() {
   let html = `<p class="section-hint">TOQUE ✔ PARA CONFIRMAR · ✏️ PARA EDITAR · 🚀 PARA ABRIR TODOS OS SERVIÇOS</p>`;
-  flights.forEach((f,i) => {
-    const fs=flightState[i], fromC=cityColors[f.from], toC=cityColors[f.to];
-    const tags = fs.confirmed&&fs.number ? `<span class="inline-tag">${esc(fs.airline)} ${esc(fs.number)}</span>` : "";
+  
+  flightState.forEach((fs, i) => {
+    const fromC = cityColors[fs.from] || "#8A9BAB";
+    const toC = cityColors[fs.to] || "#8A9BAB";
+    const tags = fs.confirmed && fs.number ? `<span class="inline-tag">${esc(fs.airline)} ${esc(fs.number)}</span>` : "";
     const time = [
-      fs.confirmed&&fs.departure?`⬆ ${esc(fs.departure)}`:"",
-      fs.confirmed&&fs.arrival?`⬇ ${esc(fs.arrival)}`:"",
-      fs.confirmed&&fs.seat?`💺 ${esc(fs.seat)}`:"",
-      !fs.confirmed?f.airlines.join(" · "):"",
-      f.note?`<span style="color:#D4875C">★ ${esc(f.note)}</span>`:""
+      fs.confirmed && fs.departure ? `⬆ ${esc(fs.departure)}` : "",
+      fs.confirmed && fs.arrival ? `⬇ ${esc(fs.arrival)}` : "",
+      fs.confirmed && fs.seat ? `💺 ${esc(fs.seat)}` : "",
+      !fs.confirmed && fs.airlines ? fs.airlines.join(" · ") : "",
+      fs.note ? `<span style="color:#D4875C">★ ${esc(fs.note)}</span>` : ""
     ].filter(Boolean).join(" &nbsp;");
 
     let body = "";
-    if(fs.expanded) {
-      const airlBtns = f.airlines.map(a => {
-        const ai=airlineInfo[a], sel=fs.airline===a;
+    if (fs.expanded) {
+      const airlinesList = fs.airlines || ["LATAM", "GOL", "Azul"];
+      const airlBtns = airlinesList.map(a => {
+        const ai = airlineInfo[a] || { color: "#8A9BAB", site: "#", phone: "" };
+        const sel = fs.airline === a;
         return `<button class="airline-btn" onclick="setFlightAirline(${i},'${a}')"
-          style="border-color:${sel?ai.color:"rgba(255,255,255,0.12)"};background:${sel?hex(ai.color,0.13):"rgba(255,255,255,0.04)"};color:${sel?ai.color:"#8A9BAB"};${sel?"font-weight:bold":""}">${a}</button>`;
+          style="border-color:${sel ? ai.color : "rgba(255,255,255,0.12)"};background:${sel ? hex(ai.color,0.13) : "rgba(255,255,255,0.04)"};color:${sel ? ai.color : "#8A9BAB"};${sel ? "font-weight:bold" : ""}">${a}</button>`;
       }).join("");
+      
       let airlLinks = "";
-      if(fs.airline) { const ai=airlineInfo[fs.airline];
+      if (fs.airline) { 
+        const ai = airlineInfo[fs.airline] || { color: "#8A9BAB", site: "#", phone: "" };
         airlLinks = `<div class="links-row"><a href="${ai.site}" target="_blank" class="link-btn" style="background:${hex(ai.color,0.13)};border:1px solid ${hex(ai.color,0.33)};color:${ai.color}">🌐 ${fs.airline}</a><a href="tel:${ai.phone}" class="link-btn" style="background:rgba(74,171,189,0.1);border:1px solid rgba(74,171,189,0.25);color:#4AABBD">📞 ${ai.phone}</a></div>`;
       }
-      const flds = [["number","Número do Voo","ex: LA3042"],["departure","Partida","ex: 06:30"],["arrival","Chegada","ex: 08:15"],["seat","Assento","ex: 14A"],["terminal","Terminal","ex: T2"],["obs","Observações","ex: check-in online"]];
+
+      const flds = [
+        ["number", "Número do Voo", "ex: LA3042"],
+        ["departure", "Partida", "ex: 06:30"],
+        ["arrival", "Chegada", "ex: 08:15"],
+        ["seat", "Assento", "ex: 14A"],
+        ["terminal", "Terminal", "ex: T2"],
+        ["obs", "Observações", "ex: check-in online"]
+      ];
+      
       const idealFlds = `<div class="grid-2" style="margin-bottom:12px"><div><label class="field-label">⏰ HORÁRIO IDEAL PARTIDA</label><input class="field-input" value="${esc(fs.idealDep||'')}" placeholder="ex: após 07:00" oninput="setFlightField(${i},'idealDep',this.value)"></div><div><label class="field-label">⏰ HORÁRIO IDEAL CHEGADA</label><input class="field-input" value="${esc(fs.idealArr||'')}" placeholder="ex: antes das 12:00" oninput="setFlightField(${i},'idealArr',this.value)"></div></div>`;
+      
+      const editBaseFlds = `<div style="border-top:1px solid rgba(255,255,255,0.06);margin:14px 0 10px"></div><span class="section-title">EDITAR TRECHO</span>
+        <div class="grid-2" style="margin-bottom:12px">
+          <div><label class="field-label">ORIGEM (SIGLA)</label><input class="field-input" value="${esc(fs.from||'')}" placeholder="ex: GRU" oninput="setFlightField(${i},'from',this.value.toUpperCase())"></div>
+          <div><label class="field-label">DESTINO (SIGLA)</label><input class="field-input" value="${esc(fs.to||'')}" placeholder="ex: CWB" oninput="setFlightField(${i},'to',this.value.toUpperCase())"></div>
+          <div><label class="field-label">DATA FORMATADA</label><input class="field-input" value="${esc(fs.date||'')}" placeholder="ex: 20/06" oninput="setFlightField(${i},'date',this.value)"></div>
+          <div><label class="field-label">DATA ISO (PARA BUSCAS)</label><input class="field-input" type="date" value="${esc(fs.iso||'')}" oninput="setFlightField(${i},'iso',this.value)"></div>
+        </div>`;
+
       body = `<div class="card-body">
+        ${editBaseFlds}
         <details ${!fs.airline ? 'open' : ''} style="margin-bottom:14px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;background:rgba(255,255,255,0.02)">
           <summary style="font-size:11px;letter-spacing:1px;color:#D4875C;font-weight:600;cursor:pointer;outline:none;user-select:none">
             COMPANHIA AÉREA ${fs.airline ? `<span style="color:#6B9E78;margin-left:6px">✅ ${fs.airline}</span>` : ''}
@@ -117,84 +142,150 @@ function renderFlights() {
           </div>
         </details>
         ${idealFlds}
-        ${searchPanel(getFlightServices(f),"voo", !fs.confirmed)}
+        ${searchPanel(getFlightServices(fs), "voo", !fs.confirmed)}
         <div style="border-top:1px solid rgba(255,255,255,0.06);margin:10px 0 14px"></div>
         <span class="section-title">DADOS DO VOO CONFIRMADO</span>
-        <div class="grid-2">${flds.map(([k,l,p])=>`<div><label class="field-label">${l.toUpperCase()}</label><input class="field-input" value="${esc(fs[k])}" placeholder="${p}" oninput="setFlightField(${i},'${k}',this.value)"></div>`).join("")}</div>
+        <div class="grid-2">
+          ${flds.map(([k,l,p])=>`<div><label class="field-label">${l.toUpperCase()}</label><input class="field-input" value="${esc(fs[k]||'')}" placeholder="${p}" oninput="setFlightField(${i},'${k}',this.value)"></div>`).join("")}
+          <div style="grid-column: span 2">
+            <label class="field-label" style="color:#6B9E78">VALOR PAGO NESTE TRECHO (R$)</label>
+            <input class="field-input" style="font-size:16px;font-weight:bold;color:#6B9E78" value="${fs.price ? fmtBR(fs.price) : ''}" placeholder="0,00" 
+              oninput="this.value = maskCurrency(this.value); setFlightField(${i},'price',parseCurrency(this.value))">
+          </div>
+        </div>
+        <div style="margin-top: 16px; text-align: right;">
+          <button onclick="deleteFlight(${i})" style="background:rgba(232,0,61,0.1);border:1px solid rgba(232,0,61,0.3);color:#E8003D;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer">🗑️ Excluir Voo</button>
+        </div>
       </div>`;
     }
-    html += `<div class="card${fs.confirmed?" confirmed":""}" data-idx="${i}">
+
+    html += `<div class="card${fs.confirmed ? " confirmed" : ""}" data-idx="${i}">
       <div class="card-header">
-        <button class="btn-confirm${fs.confirmed?" on":""}" onclick="toggleFlightConfirm(${i})">${fs.confirmed?"✅":"🔲"}</button>
+        <button class="btn-confirm${fs.confirmed ? " on" : ""}" onclick="toggleFlightConfirm(${i})">${fs.confirmed ? "✅" : "🔲"}</button>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
-            <span class="tag" style="background:${hex(fromC,0.2)};color:${fromC}">${f.from}</span>
+            <span class="tag" style="background:${hex(fromC,0.2)};color:${fromC}">${fs.from || '?'}</span>
             <span style="color:#D4875C;font-size:13px">→</span>
-            <span class="tag" style="background:${hex(toC,0.2)};color:${toC}">${f.to}</span>${tags}
+            <span class="tag" style="background:${hex(toC,0.2)};color:${toC}">${fs.to || '?'}</span>${tags}
           </div>
-          <div style="font-size:11px;color:#6A8A9A"><span style="color:#D4875C;font-weight:600">${f.date}</span>&nbsp;&nbsp;${time}</div>
+          <div style="font-size:11px;color:#6A8A9A"><span style="color:#D4875C;font-weight:600">${fs.date || '?'}</span>&nbsp;&nbsp;${time}</div>
         </div>
-        <button class="btn-expand" onclick="toggleFlightExpand(${i})">${fs.expanded?"▲":"✏️"}</button>
+        <button class="btn-expand" onclick="toggleFlightExpand(${i})">${fs.expanded ? "▲" : "✏️"}</button>
       </div>${body}</div>`;
   });
+
+  html += `<button onclick="addFlight()" style="width:100%;margin-bottom:20px;padding:12px;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.2);color:#8A9BAB;border-radius:12px;cursor:pointer;font-weight:600">+ Adicionar Novo Trecho</button>`;
+
   html += `<div class="quicklinks"><div style="font-size:10px;color:#7A9BAB;letter-spacing:2px;margin-bottom:10px">ACESSO RÁPIDO</div><div style="display:flex;gap:8px;flex-wrap:wrap">
     <a href="https://www.google.com/travel/flights?hl=pt-BR" target="_blank" class="link-btn" style="background:rgba(66,133,244,0.13);border:1px solid rgba(66,133,244,0.35);color:#4285F4;font-weight:bold">🔍 Google Flights</a>
     ${Object.entries(airlineInfo).map(([n,ai])=>`<a href="${ai.site}" target="_blank" class="link-btn" style="background:${hex(ai.color,0.1)};border:1px solid ${hex(ai.color,0.27)};color:${ai.color}">🌐 ${n}</a>`).join("")}</div></div>`;
   return html;
 }
 
-function toggleFlightConfirm(i){flightState[i].confirmed=!flightState[i].confirmed;flightState[i].expanded=flightState[i].confirmed;saveState();render();}
-function toggleFlightExpand(i){flightState[i].expanded=!flightState[i].expanded;render();}
-function setFlightField(i,k,v){flightState[i][k]=v;saveState();}
-function setFlightAirline(i,a){flightState[i].airline=flightState[i].airline===a?"":a;saveState();render();}
+function toggleFlightConfirm(i) { flightState[i].confirmed = !flightState[i].confirmed; flightState[i].expanded = flightState[i].confirmed; saveState(); render(); }
+function toggleFlightExpand(i) { flightState[i].expanded = !flightState[i].expanded; render(); }
+function setFlightField(i, k, v) { flightState[i][k] = v; saveState(); }
+function setFlightAirline(i, a) { flightState[i].airline = flightState[i].airline === a ? "" : a; saveState(); render(); }
+function addFlight() {
+  flightState.push({ id: Date.now(), from:"", to:"", date:"", iso:"", airlines:["LATAM","GOL","Azul"], confirmed:false, expanded:true, airline:"", number:"", departure:"", arrival:"", seat:"", terminal:"", obs:"", idealDep:"", idealArr:"", price:"" });
+  saveState(); render();
+}
+function deleteFlight(i) {
+  if(!confirm("Tem certeza que deseja excluir este voo?")) return;
+  flightState.splice(i, 1);
+  saveState(); render();
+}
 
 // ─── HOTELS ──────────────────────────────────────────────────────────────────
 const payColors={Pago:"#6B9E78",Pendente:"#D4875C",Parcial:"#4AABBD"};
 function renderHotels() {
   let html = `<p class="section-hint">TOQUE ✔ PARA CONFIRMAR · ✏️ PARA EDITAR RESERVA</p>`;
-  hotels.forEach((h,i) => {
-    const hs=hotelState[i], pc=payColors[hs.payStatus]||"#8A9BAB";
-    const badge = hs.payStatus?`<span style="font-size:10px;padding:1px 8px;border-radius:10px;background:${hex(pc,0.13)};color:${pc};border:1px solid ${hex(pc,0.27)}">${hs.payStatus}</span>`:"";
-    const sum = [hs.code?`🔑 ${esc(hs.code)}`:"",hs.totalValue?`R$ ${esc(hs.totalValue)}`:""].filter(Boolean).join("  ·  ");
+  hotelState.forEach((hs, i) => {
+    const pc = payColors[hs.payStatus] || "#8A9BAB";
+    const badge = hs.payStatus ? `<span style="font-size:10px;padding:1px 8px;border-radius:10px;background:${hex(pc,0.13)};color:${pc};border:1px solid ${hex(pc,0.27)}">${hs.payStatus}</span>` : "";
+    const sum = [hs.code ? `🔑 ${esc(hs.code)}` : "", hs.totalValue ? `R$ ${fmtBR(hs.totalValue)}` : ""].filter(Boolean).join("  ·  ");
+    const hColor = hs.color || "#5D7A8A";
+    
     let body = "";
-    if(hs.expanded) {
-      const flds=[["code","Código de Reserva","ex: HTBR-4821"],["room","Tipo de Quarto","ex: Standard Duplo"],["checkinTime","Horário Check-in","ex: 14:00"],["checkoutTime","Horário Check-out","ex: 12:00"],["diaria","Valor da Diária","ex: R$ 320"],["totalValue","Valor Total","ex: R$ 2.880"]];
-      const payF=[["payMethod","Forma de Pagamento","ex: Cartão / PIX"],["paid","Valor Pago","ex: R$ 1.440"]];
-      const payBtns=["Pago","Parcial","Pendente"].map(s=>{const c=payColors[s],sel=hs.payStatus===s;return`<button class="pay-btn" onclick="setHotelPayStatus(${i},'${s}')" style="border-color:${sel?hex(c,0.6):hex(c,0.27)};background:${sel?hex(c,0.13):"rgba(255,255,255,0.04)"};color:${sel?c:"#6A8A9A"}">${s}</button>`;}).join("");
+    if (hs.expanded) {
+      const payBtns = ["Pago","Parcial","Pendente"].map(s => {
+        const c = payColors[s], sel = hs.payStatus === s;
+        return `<button class="pay-btn" onclick="setHotelPayStatus(${i},'${s}')" style="border-color:${sel?hex(c,0.6):hex(c,0.27)};background:${sel?hex(c,0.13):"rgba(255,255,255,0.04)"};color:${sel?c:"#6A8A9A"}">${s}</button>`;
+      }).join("");
+
+      const flds = [
+        ["code", "Código de Reserva", "ex: HTBR-4821"],
+        ["room", "Tipo de Quarto", "ex: Standard Duplo"],
+        ["checkinTime", "Horário Check-in", "ex: 14:00"],
+        ["checkoutTime", "Horário Check-out", "ex: 12:00"]
+      ];
+
+      const editBaseFlds = `<div style="border-top:1px solid rgba(255,255,255,0.06);margin:14px 0 10px"></div><span class="section-title">EDITAR HOTEL</span>
+        <div class="grid-2" style="margin-bottom:12px">
+          <div><label class="field-label">CIDADE</label><input class="field-input" value="${esc(hs.city||'')}" placeholder="ex: Curitiba" oninput="setHotelField(${i},'city',this.value)"></div>
+          <div><label class="field-label">NOME DO HOTEL</label><input class="field-input" value="${esc(hs.name||'')}" placeholder="ex: Hotel X" oninput="setHotelField(${i},'name',this.value)"></div>
+          <div><label class="field-label">DATA CHECK-IN</label><input class="field-input" type="date" value="${esc(hs.checkin_iso||'')}" oninput="setHotelField(${i},'checkin_iso',this.value)"></div>
+          <div><label class="field-label">DATA CHECK-OUT</label><input class="field-input" type="date" value="${esc(hs.checkout_iso||'')}" oninput="setHotelField(${i},'checkout_iso',this.value)"></div>
+        </div>`;
+
       body = `<div class="card-body">
-        <div class="links-row">
-          <a href="${h.site}" target="_blank" class="link-btn" style="background:${hex(h.color,0.13)};border:1px solid ${hex(h.color,0.33)};color:${h.color}">🌐 Site</a>
-          <a href="tel:${h.phone}" class="link-btn" style="background:rgba(74,171,189,0.1);border:1px solid rgba(74,171,189,0.25);color:#4AABBD">📞 ${h.phone}</a>
-          <a href="${h.maps}" target="_blank" class="link-btn" style="background:rgba(212,135,92,0.12);border:1px solid rgba(212,135,92,0.3);color:#D4875C">📍 Maps</a>
-        </div>
+        ${editBaseFlds}
         <div style="border-top:1px solid rgba(255,255,255,0.06);margin:4px 0 14px"></div>
-        ${searchPanel(getHotelServices(h),"hotel", !hs.confirmed)}
+        ${searchPanel(getHotelServices(hs), "hotel", !hs.confirmed)}
         <div style="border-top:1px solid rgba(255,255,255,0.06);margin:4px 0 14px"></div>
         <span class="section-title">DADOS DA RESERVA</span>
-        <div class="grid-2" style="margin-bottom:12px">${flds.map(([k,l,p])=>`<div><label class="field-label">${l.toUpperCase()}</label><input class="field-input" value="${esc(hs[k])}" placeholder="${p}" oninput="setHotelField(${i},'${k}',this.value)"></div>`).join("")}</div>
+        <div class="grid-2" style="margin-bottom:12px">
+          ${flds.map(([k,l,p]) => `<div><label class="field-label">${l.toUpperCase()}</label><input class="field-input" value="${esc(hs[k]||'')}" placeholder="${p}" oninput="setHotelField(${i},'${k}',this.value)"></div>`).join("")}
+          <div>
+            <label class="field-label">VALOR DA DIÁRIA (R$)</label>
+            <input class="field-input" value="${hs.diaria ? fmtBR(hs.diaria) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value); setHotelField(${i},'diaria',parseCurrency(this.value))">
+          </div>
+          <div>
+            <label class="field-label" style="color:#6B9E78;font-weight:bold">VALOR TOTAL (R$)</label>
+            <input class="field-input" style="color:#6B9E78;font-weight:bold" value="${hs.totalValue ? fmtBR(hs.totalValue) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value); setHotelField(${i},'totalValue',parseCurrency(this.value))">
+          </div>
+        </div>
         <span class="section-title">PAGAMENTO</span>
-        <div class="grid-2" style="margin-bottom:10px">${payF.map(([k,l,p])=>`<div><label class="field-label">${l.toUpperCase()}</label><input class="field-input" value="${esc(hs[k])}" placeholder="${p}" oninput="setHotelField(${i},'${k}',this.value)"></div>`).join("")}</div>
+        <div class="grid-2" style="margin-bottom:10px">
+          <div><label class="field-label">FORMA DE PAGAMENTO</label><input class="field-input" value="${esc(hs.payMethod||'')}" placeholder="ex: Cartão / PIX" oninput="setHotelField(${i},'payMethod',this.value)"></div>
+          <div><label class="field-label">VALOR PAGO (R$)</label><input class="field-input" value="${hs.paid ? fmtBR(hs.paid) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value); setHotelField(${i},'paid',parseCurrency(this.value))"></div>
+        </div>
         <div class="pay-btns">${payBtns}</div>
-        <div><label class="field-label">OBSERVAÇÕES</label><input class="field-input" value="${esc(hs.obs)}" placeholder="ex: café incluso, cancelamento grátis" oninput="setHotelField(${i},'obs',this.value)"></div>
+        <div><label class="field-label">OBSERVAÇÕES</label><input class="field-input" value="${esc(hs.obs||'')}" placeholder="ex: café incluso, cancelamento grátis" oninput="setHotelField(${i},'obs',this.value)"></div>
+        <div style="margin-top: 16px; text-align: right;">
+          <button onclick="deleteHotel(${i})" style="background:rgba(232,0,61,0.1);border:1px solid rgba(232,0,61,0.3);color:#E8003D;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer">🗑️ Excluir Hotel</button>
+        </div>
       </div>`;
     }
-    html += `<div class="card" data-idx="${i}" style="background:${hs.confirmed?hex(h.color,0.05):"rgba(255,255,255,0.04)"};border-color:${hs.confirmed?hex(h.color,0.33):"rgba(255,255,255,0.08)"}">
+    html += `<div class="card" data-idx="${i}" style="background:${hs.confirmed ? hex(hColor,0.05) : "rgba(255,255,255,0.04)"};border-color:${hs.confirmed ? hex(hColor,0.33) : "rgba(255,255,255,0.08)"}">
       <div class="card-header">
-        <button class="btn-confirm${hs.confirmed?" on":""}" onclick="toggleHotelConfirm(${i})" style="${hs.confirmed?`background:${hex(h.color,0.2)};border-color:${h.color}`:""}">${hs.confirmed?"✅":"🔲"}</button>
+        <button class="btn-confirm${hs.confirmed ? " on" : ""}" onclick="toggleHotelConfirm(${i})" style="${hs.confirmed ? `background:${hex(hColor,0.2)};border-color:${hColor}` : ""}">${hs.confirmed ? "✅" : "🔲"}</button>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
-            <span style="font-size:11px;color:${h.color};letter-spacing:1px;text-transform:uppercase;font-weight:600">${h.emoji} ${h.city}</span>${badge}
+            <span style="font-size:11px;color:${hColor};letter-spacing:1px;text-transform:uppercase;font-weight:600">${hs.emoji||'🏨'} ${hs.city||'?'}</span>${badge}
           </div>
-          <div style="font-size:15px;color:#F0E6D0;margin-bottom:3px;font-weight:500">${h.name}</div>
-          <div style="font-size:11px;color:#6A8A9A">📅 ${h.checkin} → ${h.checkout}${sum?`&nbsp;&nbsp;<span style="color:#D4875C">${sum}</span>`:""}</div>
+          <div style="font-size:15px;color:#F0E6D0;margin-bottom:3px;font-weight:500">${hs.name||'Nome do Hotel'}</div>
+          <div style="font-size:11px;color:#6A8A9A">📅 ${hs.checkin_iso||'?'} → ${hs.checkout_iso||'?'}${sum ? `&nbsp;&nbsp;<span style="color:#D4875C">${sum}</span>` : ""}</div>
         </div>
-        <button class="btn-expand" onclick="toggleHotelExpand(${i})">${hs.expanded?"▲":"✏️"}</button>
+        <button class="btn-expand" onclick="toggleHotelExpand(${i})">${hs.expanded ? "▲" : "✏️"}</button>
       </div>${body}</div>`;
   });
+
+  html += `<button onclick="addHotel()" style="width:100%;margin-bottom:20px;padding:12px;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.2);color:#8A9BAB;border-radius:12px;cursor:pointer;font-weight:600">+ Adicionar Novo Hotel</button>`;
+
   return html;
 }
 
-function toggleHotelConfirm(i){hotelState[i].confirmed=!hotelState[i].confirmed;hotelState[i].expanded=hotelState[i].confirmed;saveState();render();}
-function toggleHotelExpand(i){hotelState[i].expanded=!hotelState[i].expanded;render();}
-function setHotelField(i,k,v){hotelState[i][k]=v;saveState();}
-function setHotelPayStatus(i,s){hotelState[i].payStatus=hotelState[i].payStatus===s?"":s;saveState();render();}
+function toggleHotelConfirm(i) { hotelState[i].confirmed = !hotelState[i].confirmed; hotelState[i].expanded = hotelState[i].confirmed; saveState(); render(); }
+function toggleHotelExpand(i) { hotelState[i].expanded = !hotelState[i].expanded; render(); }
+function setHotelField(i, k, v) { hotelState[i][k] = v; saveState(); }
+function setHotelPayStatus(i, s) { hotelState[i].payStatus = hotelState[i].payStatus === s ? "" : s; saveState(); render(); }
+function addHotel() {
+  hotelState.push({ id: Date.now(), city:"", name:"", emoji:"🏨", color:"#5D7A8A", checkin_iso:"", checkout_iso:"", confirmed:false, expanded:true, code:"", checkinTime:"", checkoutTime:"", room:"", diaria:"", totalValue:"", paid:"", payMethod:"", payStatus:"", obs:"" });
+  saveState(); render();
+}
+function deleteHotel(i) {
+  if(!confirm("Tem certeza que deseja excluir este hotel?")) return;
+  hotelState.splice(i, 1);
+  saveState(); render();
+}

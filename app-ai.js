@@ -1,17 +1,39 @@
-// ─── ORGANIC ─────────────────────────────────────────────────────────────────
-function renderOrganic() {
-  return `<p class="section-hint" style="line-height:1.6">🌿 Pontos de abastecimento orgânico em cada cidade</p>` +
-    organic.map(o => `
-      <div class="org-card">
-        <div>
-          <div style="font-size:11px;letter-spacing:2px;color:#6B9E78;text-transform:uppercase;margin-bottom:4px;font-weight:600">${o.emoji} ${o.city}</div>
-          <div style="font-size:16px;color:#F0E6D0;margin-bottom:4px;font-weight:500">${o.name}</div>
-          ${o.sector?`<div style="font-size:12px;color:#8A9BAB;margin-bottom:8px">${o.sector}</div>`:""}
-          ${o.phone?`<a href="tel:${o.phone}" class="link-btn" style="background:rgba(107,158,120,0.15);border:1px solid rgba(107,158,120,0.3);color:#6B9E78">📞 ${o.phone}</a>`:""}
+// ─── MEALS ───────────────────────────────────────────────────────────────────
+function renderMeals() {
+  let html = `<p class="section-hint" style="line-height:1.6">🥗 Controle de alimentação e gastos por refeição</p>`;
+  
+  const total = mealsState.reduce((sum, m) => sum + (parseFloat(m.value) || 0), 0);
+  html += `<div style="text-align:center;margin-bottom:16px;padding:12px;background:rgba(107,158,120,0.1);border:1px solid rgba(107,158,120,0.3);border-radius:12px;color:#6B9E78">
+    <span style="font-size:11px;letter-spacing:1px;display:block;margin-bottom:4px">TOTAL GASTO EM REFEIÇÕES</span>
+    <span style="font-size:22px;font-weight:bold">R$ ${fmtBR(total)}</span>
+  </div>`;
+
+  mealsState.forEach((m, i) => {
+    html += `
+      <div class="card" style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);padding:16px;margin-bottom:12px">
+        <div class="grid-2" style="margin-bottom:12px">
+          <div><label class="field-label">DATA / HORA</label><input class="field-input" value="${esc(m.date||'')}" placeholder="ex: 20/06 12:30" oninput="setMealField(${i},'date',this.value)"></div>
+          <div><label class="field-label">NOME / LOCAL</label><input class="field-input" value="${esc(m.name||'')}" placeholder="ex: Almoço Praia" oninput="setMealField(${i},'name',this.value)"></div>
+          <div style="grid-column: span 2">
+            <label class="field-label" style="color:#6B9E78">VALOR (R$)</label>
+            <input class="field-input" style="font-size:16px;font-weight:bold;color:#6B9E78" value="${m.value ? fmtBR(m.value) : ''}" placeholder="0,00" 
+              oninput="this.value = maskCurrency(this.value); setMealField(${i},'value',parseCurrency(this.value))">
+          </div>
         </div>
-        <a href="${o.maps}" target="_blank" class="link-btn" style="background:rgba(107,158,120,0.12);border:1px solid rgba(107,158,120,0.25);color:#6B9E78;white-space:nowrap">📍 Maps</a>
-      </div>`).join("");
+        <div style="text-align: right;">
+          <button onclick="deleteMeal(${i})" style="background:rgba(232,0,61,0.1);border:1px solid rgba(232,0,61,0.3);color:#E8003D;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer">🗑️ Excluir Refeição</button>
+        </div>
+      </div>`;
+  });
+
+  html += `<button onclick="addMeal()" style="width:100%;margin-bottom:20px;padding:12px;background:rgba(107,158,120,0.1);border:1px dashed rgba(107,158,120,0.3);color:#6B9E78;border-radius:12px;cursor:pointer;font-weight:600">+ Adicionar Refeição</button>`;
+
+  return html;
 }
+
+function setMealField(i, k, v) { mealsState[i][k] = v; saveState(); render(); }
+function addMeal() { mealsState.push({ id: Date.now(), date: "", name: "", value: "" }); saveState(); render(); }
+function deleteMeal(i) { if(confirm("Excluir esta refeição?")) { mealsState.splice(i, 1); saveState(); render(); } }
 
 // ─── EXPENSES (ENHANCED) ─────────────────────────────────────────────────────
 const catColors = { 1:"#D4875C", 2:"#4AABBD", 3:"#6B9E78", 4:"#8A9BAB" };
@@ -19,27 +41,38 @@ const customColorPool = ["#E091D4","#FFB347","#7EC8E3","#C5E17A","#FF8A80","#B39
 
 function getFlightSubItems() {
   const opts = aiState.flightOptions || [];
-  return flights.map((f, i) => {
+  return flightState.map((fs, i) => {
     const opt = opts.find(o => parseInt(o.trecho) === i);
-    const fs = flightState[i];
-    const price = opt ? parseFloat(opt.preco) || 0 : 0;
-    const airline = fs.airline || (opt ? opt.companhia : f.airlines[0]) || "—";
-    return { label:`${f.from} → ${f.to}`, date:f.date, detail:airline, value:price, confirmed:fs.confirmed };
+    const aiPrice = opt ? parseFloat(opt.preco) || 0 : 0;
+    const actualPrice = parseFloat(fs.price) || 0;
+    const finalPrice = actualPrice > 0 ? actualPrice : aiPrice;
+    
+    return { label:`${fs.from||'?'} → ${fs.to||'?'}`, date:fs.date||'?', detail:fs.airline || "—", value:finalPrice, confirmed:fs.confirmed };
   });
 }
 
 function getHotelSubItems() {
-  return hotels.map((h, i) => {
-    const hs = hotelState[i];
+  return hotelState.map((hs, i) => {
     const total = parseFloat(hs.totalValue) || 0;
-    const nights = Math.round((new Date(h.checkout_iso) - new Date(h.checkin_iso)) / 86400000);
-    return { label:`${h.emoji} ${h.city}`, date:`${h.checkin}→${h.checkout}`, detail:`${nights}n`, value:total, confirmed:hs.confirmed };
+    let nights = 0;
+    if(hs.checkin_iso && hs.checkout_iso) {
+       nights = Math.round((new Date(hs.checkout_iso) - new Date(hs.checkin_iso)) / 86400000);
+    }
+    return { label:`${hs.emoji||'🏨'} ${hs.city||'?'}`, date:`${hs.checkin_iso||'?'}→${hs.checkout_iso||'?'}`, detail:`${nights}n`, value:total, confirmed:hs.confirmed };
+  });
+}
+
+function getMealSubItems() {
+  return mealsState.map((m, i) => {
+    const val = parseFloat(m.value) || 0;
+    return { label:`${m.name||'Refeição'}`, date:m.date||'?', detail:"", value:val, confirmed:true };
   });
 }
 
 function getAutoEstimate(catId) {
   if (catId === 1) { const s = getFlightSubItems().reduce((a,b) => a+b.value, 0); return s > 0 ? s : null; }
   if (catId === 2) { const s = getHotelSubItems().reduce((a,b) => a+b.value, 0); return s > 0 ? s : null; }
+  if (catId === 3) { const s = getMealSubItems().reduce((a,b) => a+b.value, 0); return s > 0 ? s : null; }
   return null;
 }
 
@@ -100,13 +133,15 @@ function renderExpenses() {
     let subs = "";
     if (e.id === 1) subs = renderSubItems(flightSubs);
     if (e.id === 2) subs = renderSubItems(hotelSubs);
-    const handler = e.isCustom ? `oninput="setCustomExpPaid('${e.id}',this.value)"` : `oninput="setExpPaid(${idx},this.value)"`;
+    if (e.id === 3) subs = renderSubItems(getMealSubItems());
+    
+    const handler = e.isCustom ? `setCustomExpPaid('${e.id}',parseCurrency(this.value))` : `setExpPaid(${idx},parseCurrency(this.value))`;
     return `<div class="exp-card" style="border-left:3px solid ${color}"><div class="exp-row"><div style="flex:1"><div style="display:flex;align-items:center;gap:6px">\
 <span style="font-size:13px;color:#E8DFC8;font-weight:600">${e.category}</span>${autoBadge}${removeBtn}</div>\
 <div style="font-size:11px;color:#6A8A9A;margin-top:2px">${e.item}</div></div>\
 <div style="text-align:right"><div style="font-size:10px;color:#8A9BAB;letter-spacing:.5px">Estimado</div>\
 <div style="font-size:16px;color:${color};font-weight:700">R$ ${fmtBR(est)}</div></div></div>\
-${subs}<div class="exp-input-row"><div style="flex:1"><input type="number" class="field-input" placeholder="Valor pago (R$)" value="${esc(e.paid||'')}" ${handler} style="padding:8px 12px;font-size:13px"></div>${dH}</div></div>`;
+${subs}<div class="exp-input-row"><div style="flex:1"><input type="text" class="field-input" placeholder="0,00" value="${e.paid ? fmtBR(e.paid) : ''}" oninput="this.value = maskCurrency(this.value); ${handler}" style="padding:8px 12px;font-size:13px;font-weight:bold;color:${color}"></div>${dH}</div></div>`;
   }).join("");
 
   // Add button
@@ -169,7 +204,7 @@ function renderAI() {
   let optionsHTML = "";
   const opts = mode==="flight" ? (aiState.flightOptions||[]) : (aiState.hotelOptions||[]);
   if(mode==="flight") {
-    const trechoOpts = flights.map((f,i)=>`<option value="${i}">${f.from}→${f.to} ${f.date}</option>`).join("");
+    const trechoOpts = flightState.map((f,i)=>`<option value="${i}">${f.from||'?'}→${f.to||'?'} ${f.date||'?'}</option>`).join("");
     optionsHTML = opts.map((o,i)=>`<div class="ai-option" style="position:relative">
       <div style="grid-column:1/-1;margin-bottom:4px"><label class="field-label">TRECHO</label><select class="field-input" onchange="setAIOpt(${i},'trecho',this.value)">${trechoOpts.replace(`value="${o.trecho||0}"`,`value="${o.trecho||0}" selected`)}</select></div>
       <div><label class="field-label">SERVIÇO</label><input class="field-input" value="${esc(o.servico||'')}" placeholder="ex: Google Flights" oninput="setAIOpt(${i},'servico',this.value)"></div>
@@ -210,8 +245,8 @@ function renderAI() {
           <select id="ai-segment-selector" style="width:100%;padding:10px;background:rgba(15,25,35,0.8);border:1px solid rgba(74,171,189,0.3);color:#F0E6D0;border-radius:8px;font-family:Inter,sans-serif;font-size:14px;outline:none">
             <option value="all">Todos os ${mode==="flight"?"Voos":"Hotéis"}</option>
             ${mode==="flight" 
-              ? flights.map((f,i)=>`<option value="${i}">Voo ${i+1}: ${f.from} → ${f.to} (${f.date})</option>`).join("")
-              : hotels.map((h,i)=>`<option value="${i}">Hotel: ${h.city} (${h.checkin} → ${h.checkout})</option>`).join("")
+              ? flightState.map((f,i)=>`<option value="${i}">Voo ${i+1}: ${f.from||'?'} → ${f.to||'?'} (${f.date||'?'})</option>`).join("")
+              : hotelState.map((h,i)=>`<option value="${i}">Hotel: ${h.city||'?'} (${h.checkin_iso||'?'} → ${h.checkout_iso||'?'})</option>`).join("")
             }
           </select>
         </div>
@@ -293,43 +328,42 @@ async function autoSearchWithGemini() {
 
   try {
     if (mode === "flight") {
-      var toSearch = sel === "all" ? flights.map((_, i) => i) : [parseInt(sel)];
+      var toSearch = sel === "all" ? flightState.map((_, i) => i) : [parseInt(sel)];
       for (var k = 0; k < toSearch.length; k++) {
         var i = toSearch[k];
-        var f = flights[i];
-        var fs = flightState[i];
-        prog.textContent = "Buscando " + f.from + " -> " + f.to + " (" + (k+1) + "/" + toSearch.length + ")...";
+        var f = flightState[i];
+        prog.textContent = "Buscando " + (f.from||'?') + " -> " + (f.to||'?') + " (" + (k+1) + "/" + toSearch.length + ")...";
         btn.textContent = prog.textContent;
 
         if (sel !== "all") {
-          var q = "Pesquise passagens " + f.from + " para " + f.to + " dia " + f.iso + " voo DIRETO sem escala. Selecione a melhor opção baseando-se no CUSTO TOTAL (tarifa do voo + taxas de embarque + taxa de bagagem para embarque).\nREGRA CRÍTICA: Responda EXCLUSIVAMENTE com o objeto JSON. Não inclua NENHUM texto explicativo, avisos ou justificativas. Se não encontrar dados exatos, forneça uma estimativa ou 'A verificar'.\nFormato OBRIGATÓRIO: {\"companhia\":\"GOL ou LATAM ou Azul\",\"preco\":\"ex: 450\",\"partida\":\"ex: 10:00\",\"chegada\":\"ex: 11:30\",\"obs\":\"ex: Valor já inclui taxas e bagagem.\"}";
+          var q = "Pesquise passagens " + (f.from||'') + " para " + (f.to||'') + " dia " + (f.iso||'') + " voo DIRETO sem escala. Selecione a melhor opção baseando-se no CUSTO TOTAL (tarifa do voo + taxas de embarque + taxa de bagagem para embarque).\nREGRA CRÍTICA: Responda EXCLUSIVAMENTE com o objeto JSON. Não inclua NENHUM texto explicativo, avisos ou justificativas. Se não encontrar dados exatos, forneça uma estimativa ou 'A verificar'.\nFormato OBRIGATÓRIO: {\"companhia\":\"GOL ou LATAM ou Azul\",\"preco\":\"ex: 450\",\"partida\":\"ex: 10:00\",\"chegada\":\"ex: 11:30\",\"obs\":\"ex: Valor já inclui taxas e bagagem.\"}";
           var r = await geminiSearch(q, true);
           try {
             var match = r.match(/\{[\s\S]*\}/);
             if(!match) throw new Error("No JSON found");
             var data = JSON.parse(match[0]);
-            results.push("✈️ " + f.from + " -> " + f.to + "\nMelhor Voo Encontrado:\nCompanhia: " + data.companhia + "\nPreço: R$ " + data.preco + "\nHorário: " + data.partida + " - " + data.chegada + "\nObs: " + data.obs);
+            results.push("✈️ " + (f.from||'?') + " -> " + (f.to||'?') + "\nMelhor Voo Encontrado:\nCompanhia: " + data.companhia + "\nPreço: R$ " + data.preco + "\nHorário: " + data.partida + " - " + data.chegada + "\nObs: " + data.obs);
             aiState.applyAction = { type: 'flight', index: i, data: data };
           } catch(e) {
-            results.push("✈️ " + f.from + " -> " + f.to + "\nErro ao ler JSON: " + r);
+            results.push("✈️ " + (f.from||'?') + " -> " + (f.to||'?') + "\nErro ao ler JSON: " + r);
           }
         } else {
           var ideal = "";
-          if (fs.idealDep) ideal += " Horario ideal partida: " + fs.idealDep + ".";
-          if (fs.idealArr) ideal += " Horario ideal chegada: " + fs.idealArr + ".";
-          var q = "Preco de passagem aerea " + f.from + " para " + f.to + " dia " + f.iso +
-            " voo DIRETO Brasil. Companhias: " + f.airlines.join(", ") + "." + ideal +
+          if (f.idealDep) ideal += " Horario ideal partida: " + f.idealDep + ".";
+          if (f.idealArr) ideal += " Horario ideal chegada: " + f.idealArr + ".";
+          var q = "Preco de passagem aerea " + (f.from||'') + " para " + (f.to||'') + " dia " + (f.iso||'') +
+            " voo DIRETO Brasil. Companhias: " + (f.airlines||[]).join(", ") + "." + ideal +
             " Informe a melhor opção pelo CUSTO TOTAL, somando a tarifa base, taxas de embarque e custo da bagagem para embarque. Liste: companhia, horario, preco total em R$ e observação.";
           var r = await geminiSearch(q, false);
-          results.push("✈️ " + f.from + " -> " + f.to + "\n" + r);
+          results.push("✈️ " + (f.from||'?') + " -> " + (f.to||'?') + "\n" + r);
         }
         if (k < toSearch.length - 1) await new Promise(function(ok){ setTimeout(ok, 2000); });
       }
     } else {
-      var toSearch = sel === "all" ? hotels.map((_, i) => i) : [parseInt(sel)];
+      var toSearch = sel === "all" ? hotelState.map((_, i) => i) : [parseInt(sel)];
       for (var k = 0; k < toSearch.length; k++) {
         var j = toSearch[k];
-        var h = hotels[j];
+        var h = hotelState[j];
         var nights = Math.round((new Date(h.checkout_iso) - new Date(h.checkin_iso)) / 86400000);
         prog.textContent = "Buscando hotel em " + h.city + " (" + (k+1) + "/" + toSearch.length + ")...";
         btn.textContent = prog.textContent;
@@ -401,20 +435,19 @@ async function analyzeWithGemini() {
   let prompt = "";
 
   if(mode==="flight") {
-    const idealTimes = flights.map((f,i) => {
-      const fs=flightState[i];
-      return f.from+"->"+f.to+" ("+f.date+"): partida="+( fs.idealDep||"qualquer")+", chegada="+(fs.idealArr||"qualquer");
+    const idealTimes = flightState.map((f,i) => {
+      return (f.from||'?')+"->"+(f.to||'?')+" ("+(f.date||'?')+"): partida="+( f.idealDep||"qualquer")+", chegada="+(f.idealArr||"qualquer");
     }).join("\n");
     const options = (aiState.flightOptions||[]).map((o,i) => {
-      const f=flights[o.trecho||0];
-      return "Opcao "+(i+1)+": "+f.from+"->"+f.to+" "+f.date+" | "+o.servico+" | "+o.companhia+" | R$ "+o.preco+" | "+o.partida+"-"+o.chegada+" | Escalas: "+o.escalas;
+      const f=flightState[o.trecho||0] || {};
+      return "Opcao "+(i+1)+": "+(f.from||'?')+"->"+(f.to||'?')+" "+(f.date||'?')+" | "+o.servico+" | "+o.companhia+" | R$ "+o.preco+" | "+o.partida+"-"+o.chegada+" | Escalas: "+o.escalas;
     }).join("\n");
     prompt = "Analise estas opcoes de VOO no Brasil. Recomende as melhores por custo-beneficio. Preferencia FORTE por voos diretos.\n\nHorarios ideais:\n"+idealTimes+"\n\nOpcoes:\n"+options+"\n\nResponda em pt-BR com emojis. RECOMENDACAO, RANKING, DICA, ALERTAS.";
   } else {
     const options = (aiState.hotelOptions||[]).map((o,i) =>
       "Opcao "+(i+1)+": "+o.cidade+" | "+o.hotel+" | R$ "+o.precoNoite+"/noite | Avaliacao: "+o.avaliacao+" | "+o.servico+" | "+o.obs
     ).join("\n");
-    const stays = hotels.map(h => h.city+": "+h.checkin+"->"+h.checkout+" (ref: "+h.name+")").join("\n");
+    const stays = hotelState.map(h => (h.city||'?')+": "+(h.checkin_iso||'?')+"->"+(h.checkout_iso||'?')+" (ref: "+(h.name||'?')+")").join("\n");
     prompt = "Analise estas opcoes de HOTEL no Brasil por custo-beneficio.\n\nEstadias:\n"+stays+"\n\nOpcoes:\n"+options+"\n\nResponda em pt-BR com emojis. RECOMENDACAO, RANKING, ECONOMIA, DICA.";
   }
 
