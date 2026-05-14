@@ -127,8 +127,9 @@ function renderExpenses() {
   const cards = allItems.map((e, idx) => {
     const est = e.displayEst||0, paid = parseFloat(e.paid)||0, diff = est-paid, hp = e.paid!==""&&e.paid!==undefined&&e.paid!=="";
     const color = e.color || catColors[e.id] || "#8A9BAB";
-    const dH = hp ? `<div class="exp-diff" style="background:${diff>=0?"rgba(107,158,120,0.15)":"rgba(180,80,80,0.15)"};color:${diff>=0?"#6B9E78":"#E07070"};border:1px solid ${diff>=0?"rgba(107,158,120,0.3)":"rgba(180,80,80,0.3)"}">${diff>=0?"−":"+"} R$ ${fmtBR(Math.abs(diff))}</div>` : "";
-    const autoBadge = e.isAuto ? `<span class="exp-auto-badge">SYNC</span>` : "";
+    const diffTooltip = "Saldo restante: Verde indica que o gasto está dentro do orçado. Vermelho indica que o valor pago ultrapassou a estimativa.";
+    const dH = hp ? `<div class="exp-diff" title="${diffTooltip}" style="cursor:help;background:${diff>=0?"rgba(107,158,120,0.15)":"rgba(180,80,80,0.15)"};color:${diff>=0?"#6B9E78":"#E07070"};border:1px solid ${diff>=0?"rgba(107,158,120,0.3)":"rgba(180,80,80,0.3)"}">${diff>=0?"−":"+"} R$ ${fmtBR(Math.abs(diff))}</div>` : "";
+    const autoBadge = e.isAuto ? `<span class="exp-auto-badge" title="Valor calculado automaticamente somando os itens desta categoria (sincronizado)">SYNC</span>` : "";
     const removeBtn = e.isCustom ? `<button onclick="removeCustomExpense('${e.id}')" class="exp-remove-btn" title="Remover">✕</button>` : "";
     let subs = "";
     if (e.id === 1) subs = renderSubItems(flightSubs);
@@ -139,9 +140,9 @@ function renderExpenses() {
     return `<div class="exp-card" style="border-left:3px solid ${color}"><div class="exp-row"><div style="flex:1"><div style="display:flex;align-items:center;gap:6px">\
 <span style="font-size:13px;color:#E8DFC8;font-weight:600">${e.category}</span>${autoBadge}${removeBtn}</div>\
 <div style="font-size:11px;color:#6A8A9A;margin-top:2px">${e.item}</div></div>\
-<div style="text-align:right"><div style="font-size:10px;color:#8A9BAB;letter-spacing:.5px">Estimado</div>\
+<div style="text-align:right;cursor:help" title="Valor total estimado para a categoria. Itens 'SYNC' são somados automaticamente das outras abas."><div style="font-size:10px;color:#8A9BAB;letter-spacing:.5px">Estimado</div>\
 <div style="font-size:16px;color:${color};font-weight:700">R$ ${fmtBR(est)}</div></div></div>\
-${subs}<div class="exp-input-row"><div style="flex:1"><input type="text" class="field-input" placeholder="0,00" value="${e.paid ? fmtBR(e.paid) : ''}" oninput="this.value = maskCurrency(this.value); ${handler}" style="padding:8px 12px;font-size:13px;font-weight:bold;color:${color}"></div>${dH}</div></div>`;
+${subs}<div class="exp-input-row"><div style="flex:1"><input type="text" class="field-input" placeholder="O que já foi pago (R$)" title="Insira aqui o valor que você já desembolsou/pagou efetivamente." value="${e.paid ? fmtBR(e.paid) : ''}" oninput="this.value = maskCurrency(this.value); ${handler}" style="padding:8px 12px;font-size:13px;font-weight:bold;color:${color}"></div>${dH}</div></div>`;
   }).join("");
 
   // Add button
