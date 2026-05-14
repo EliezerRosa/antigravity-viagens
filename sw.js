@@ -1,5 +1,5 @@
 // Service Worker — Painel de Viagem Brasil PWA
-const CACHE_NAME = 'viagem-brasil-v4';
+const CACHE_NAME = 'viagem-brasil-v5';
 const ASSETS = [
   './',
   './index.html',

@@ -27,7 +27,13 @@ function getHotelServices(h) {
   ];
 }
 
-function searchPanel(services, type, isOpen=true) {
+function openSearchModal(type, idx) {
+  let m = document.getElementById('search-modal');
+  if(m) m.remove();
+  
+  const services = type === 'voo' ? getFlightServices(flightState[idx]) : getHotelServices(hotelState[idx]);
+  const btnType = type === 'voo' ? 'openAllFlightServices(' + idx + ')' : 'openAllHotelServices(' + idx + ')';
+  
   const rows = services.map(s => `
     <a href="${s.url}" target="_blank" class="search-link" style="background:${hex(s.color,0.07)};border:1px solid ${hex(s.color,0.25)}">
       <span style="font-size:17px;width:22px;text-align:center">${s.icon}</span>
@@ -37,23 +43,26 @@ function searchPanel(services, type, isOpen=true) {
       </div>
       <span style="font-size:14px;color:${hex(s.color,0.6)}">→</span>
     </a>`).join("");
-  return `<details ${isOpen ? 'open' : ''} style="margin-bottom:14px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;background:rgba(255,255,255,0.02)">
-    <summary style="font-size:10px;letter-spacing:2px;color:#7A9BAB;cursor:pointer;outline:none;user-select:none;font-weight:600">
-      🔎 BUSCAR MELHOR PREÇO — ${services.length} SERVIÇOS GRATUITOS
-    </summary>
-    <div style="margin-top:12px">
-      <button class="open-all-btn" onclick="openAll${type==='voo'?'Flight':'Hotel'}Services(event)">🚀 Abrir Todos os ${services.length} Serviços de Uma Vez</button>
+    
+  m = document.createElement('div');
+  m.id = 'search-modal';
+  m.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,25,35,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+  
+  m.innerHTML = `
+    <div style="background:#1E3040;border:1px solid rgba(74,171,189,0.4);border-radius:16px;padding:24px;width:100%;max-width:400px;max-height:80vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,0.5);position:relative">
+      <button onclick="document.getElementById('search-modal').remove()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:#8A9BAB;font-size:20px;cursor:pointer;padding:8px">✕</button>
+      <div style="font-size:11px;letter-spacing:2px;color:#4AABBD;margin-bottom:16px;font-weight:600">🔎 BUSCAR MELHOR PREÇO — ${services.length} SERVIÇOS</div>
+      <button class="open-all-btn" onclick="${btnType}; document.getElementById('search-modal').remove()" style="margin-bottom:12px">🚀 Abrir Todos os ${services.length} Serviços</button>
       ${rows}
     </div>
-  </details>`;
+  `;
+  document.body.appendChild(m);
 }
 
-function openAllFlightServices(e) {
-  const idx = e.target.closest('.card')?.dataset?.idx;
+function openAllFlightServices(idx) {
   if(idx!==undefined) getFlightServices(flightState[idx]).forEach(s => window.open(s.url,'_blank'));
 }
-function openAllHotelServices(e) {
-  const idx = e.target.closest('.card')?.dataset?.idx;
+function openAllHotelServices(idx) {
   if(idx!==undefined) getHotelServices(hotelState[idx]).forEach(s => window.open(s.url,'_blank'));
 }
 
@@ -133,16 +142,18 @@ function renderFlights() {
 
       body = `<div class="card-body">
         ${editBaseFlds}
-        <details ${!fs.airline ? 'open' : ''} style="margin-bottom:14px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;background:rgba(255,255,255,0.02)">
-          <summary style="font-size:11px;letter-spacing:1px;color:#D4875C;font-weight:600;cursor:pointer;outline:none;user-select:none">
-            COMPANHIA AÉREA ${fs.airline ? `<span style="color:#6B9E78;margin-left:6px">✅ ${fs.airline}</span>` : ''}
-          </summary>
-          <div style="margin-top:12px">
-            <div class="airline-btns">${airlBtns}</div>${airlLinks}
-          </div>
-        </details>
+        <div style="display:flex;gap:10px;margin-bottom:14px">
+          <details ${!fs.airline ? 'open' : ''} style="flex:1;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;background:rgba(255,255,255,0.02)">
+            <summary style="font-size:11px;letter-spacing:1px;color:#D4875C;font-weight:600;cursor:pointer;outline:none;user-select:none">
+              COMPANHIA AÉREA ${fs.airline ? `<span style="color:#6B9E78;margin-left:6px">✅ ${fs.airline}</span>` : ''}
+            </summary>
+            <div style="margin-top:12px">
+              <div class="airline-btns">${airlBtns}</div>${airlLinks}
+            </div>
+          </details>
+          <button onclick="openSearchModal('voo', ${i})" title="Pesquisar Preços" style="padding:0 16px;border-radius:10px;background:rgba(74,171,189,0.1);border:1px solid rgba(74,171,189,0.3);color:#4AABBD;font-size:22px;cursor:pointer;transition:all 0.2s">🔎</button>
+        </div>
         ${idealFlds}
-        ${searchPanel(getFlightServices(fs), "voo", !fs.confirmed)}
         <div style="border-top:1px solid rgba(255,255,255,0.06);margin:10px 0 14px"></div>
         <span class="section-title">DADOS DO VOO CONFIRMADO</span>
         <div class="grid-2">
@@ -235,8 +246,7 @@ function renderHotels() {
 
       body = `<div class="card-body">
         ${editBaseFlds}
-        <div style="border-top:1px solid rgba(255,255,255,0.06);margin:4px 0 14px"></div>
-        ${searchPanel(getHotelServices(hs), "hotel", !hs.confirmed)}
+        <button onclick="openSearchModal('hotel', ${i})" style="width:100%;padding:12px;margin:4px 0 14px;border-radius:10px;background:rgba(74,171,189,0.1);border:1px solid rgba(74,171,189,0.3);color:#4AABBD;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:Inter,sans-serif">🔎 Pesquisar Preços (Agregadores)</button>
         <div style="border-top:1px solid rgba(255,255,255,0.06);margin:4px 0 14px"></div>
         <span class="section-title">DADOS DA RESERVA</span>
         <div class="grid-2" style="margin-bottom:12px">
