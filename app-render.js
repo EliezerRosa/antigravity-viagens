@@ -165,8 +165,12 @@ function renderFlights() {
           </div>
           <div style="grid-column: span 1">
             <label class="field-label" style="color:#D4875C">VALOR JÁ PAGO (R$)</label>
-            <input class="field-input" style="font-size:16px;font-weight:bold;color:#D4875C" value="${fs.paid ? fmtBR(fs.paid) : ''}" placeholder="0,00" 
-              oninput="this.value = maskCurrency(this.value);" onchange="setFlightField(${i},'paid',parseCurrency(this.value))">
+            <div style="display:flex; gap:8px;">
+              <input class="field-input" style="font-size:16px;font-weight:bold;color:#D4875C; flex:1; background:rgba(0,0,0,0.2); opacity:0.8; cursor:not-allowed;" 
+                value="${(fs.payments ? fs.payments.reduce((a,p)=>a+parseFloat(p.value||0),0) : parseFloat(fs.paid||0)) > 0 ? fmtBR(fs.payments ? fs.payments.reduce((a,p)=>a+parseFloat(p.value||0),0) : parseFloat(fs.paid||0)) : ''}" 
+                placeholder="0,00" disabled title="Gerencie os pagamentos no botão ao lado">
+              <button onclick="openPaymentsModal('flight', ${i})" style="padding:0 12px; border-radius:8px; background:rgba(212,135,92,0.15); border:1px solid rgba(212,135,92,0.3); color:#D4875C; cursor:pointer;" title="Gerenciar Parcelas/Pagamentos">💳</button>
+            </div>
           </div>
         </div>
         <div style="margin-top: 16px; text-align: right;">
@@ -263,7 +267,15 @@ function renderHotels() {
         <span class="section-title">PAGAMENTO</span>
         <div class="grid-2" style="margin-bottom:10px">
           <div><label class="field-label">FORMA DE PAGAMENTO</label><input class="field-input" value="${esc(hs.payMethod||'')}" placeholder="ex: Cartão / PIX" onchange="setHotelField(${i},'payMethod',this.value)"></div>
-          <div><label class="field-label" style="color:#D4875C;font-weight:bold">VALOR PAGO (R$)</label><input class="field-input" style="color:#D4875C;font-weight:bold" value="${hs.paid ? fmtBR(hs.paid) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value);" onchange="setHotelField(${i},'paid',parseCurrency(this.value))"></div>
+          <div>
+            <label class="field-label" style="color:#D4875C;font-weight:bold">VALOR PAGO (R$)</label>
+            <div style="display:flex; gap:8px;">
+              <input class="field-input" style="color:#D4875C;font-weight:bold; flex:1; background:rgba(0,0,0,0.2); opacity:0.8; cursor:not-allowed;" 
+                value="${(hs.payments ? hs.payments.reduce((a,p)=>a+parseFloat(p.value||0),0) : parseFloat(hs.paid||0)) > 0 ? fmtBR(hs.payments ? hs.payments.reduce((a,p)=>a+parseFloat(p.value||0),0) : parseFloat(hs.paid||0)) : ''}" 
+                placeholder="0,00" disabled title="Gerencie os pagamentos no botão ao lado">
+              <button onclick="openPaymentsModal('hotel', ${i})" style="padding:0 12px; border-radius:8px; background:rgba(212,135,92,0.15); border:1px solid rgba(212,135,92,0.3); color:#D4875C; cursor:pointer;" title="Gerenciar Parcelas/Pagamentos">💳</button>
+            </div>
+          </div>
         </div>
         <div class="pay-btns">${payBtns}</div>
         <div><label class="field-label">OBSERVAÇÕES</label><input class="field-input" value="${esc(hs.obs||'')}" placeholder="ex: café incluso, cancelamento grátis" onchange="setHotelField(${i},'obs',this.value)"></div>
@@ -303,4 +315,110 @@ function deleteHotel(i) {
   if(!confirm("Tem certeza que deseja excluir este hotel?")) return;
   hotelState.splice(i, 1);
   saveState(); render();
+}
+
+// ─── PAYMENTS SUBMODAL ───────────────────────────────────────────────────────
+function openPaymentsModal(type, index) {
+  const item = type === 'flight' ? flightState[index] : hotelState[index];
+  
+  // Backward compatibility migration
+  if (!item.payments) {
+    item.payments = [];
+    if (item.paid && parseFloat(item.paid) > 0) {
+      item.payments.push({ id: Date.now(), date: "", desc: "Pagamento anterior migrado", value: parseFloat(item.paid) });
+    }
+  }
+
+  const title = type === 'flight' ? `✈️ Pagamentos Voo (${item.from||'?'}→${item.to||'?'})` : `🏨 Pagamentos Hotel (${item.name||'?'})`;
+  
+  let listHtml = "";
+  let totalPaid = 0;
+  if (item.payments.length === 0) {
+    listHtml = `<div style="text-align:center;color:#8A9BAB;font-size:12px;padding:20px">Nenhum pagamento registrado.</div>`;
+  } else {
+    listHtml = item.payments.map((p, pIdx) => {
+      totalPaid += parseFloat(p.value || 0);
+      return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.05); padding:10px; margin-bottom:8px; border-radius:8px;">
+        <div>
+          <div style="color:#D4875C; font-size:11px; font-weight:bold">${p.date || 'Sem data'}</div>
+          <div style="color:#F0E6D0; font-size:13px">${p.desc || 'Pagamento'}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px">
+          <div style="color:#6B9E78; font-weight:bold; font-size:15px">R$ ${fmtBR(p.value||0)}</div>
+          <button onclick="deleteModalPayment('${type}', ${index}, ${pIdx})" style="background:transparent; border:none; color:#E8003D; cursor:pointer;" title="Excluir">🗑️</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  const modalHtml = `
+    <div id="payments-submodal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(5px); z-index:9999; display:flex; justify-content:center; align-items:center; padding:20px;">
+      <div style="background:#1B252E; border:1px solid rgba(255,255,255,0.1); border-radius:16px; width:100%; max-width:400px; padding:20px; position:relative;">
+        <button onclick="closePaymentsModal()" style="position:absolute; top:15px; right:15px; background:rgba(255,255,255,0.1); border:none; color:#F0E6D0; width:30px; height:30px; border-radius:15px; cursor:pointer;">✕</button>
+        
+        <div style="font-size:14px; font-weight:bold; color:#E8DFC8; margin-bottom:16px">${title}</div>
+        
+        <div style="max-height:250px; overflow-y:auto; margin-bottom:16px;">
+          ${listHtml}
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px; margin-bottom:20px;">
+          <span style="color:#8A9BAB; font-size:12px">TOTAL PAGO</span>
+          <span style="color:#6B9E78; font-size:18px; font-weight:bold">R$ ${fmtBR(totalPaid)}</span>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.03); padding:16px; border-radius:12px;">
+          <div style="font-size:11px; letter-spacing:1px; color:#D4875C; margin-bottom:12px; font-weight:bold">ADICIONAR PAGAMENTO</div>
+          <div class="grid-2" style="margin-bottom:8px">
+            <div><label class="field-label">DATA</label><input id="pm-date" class="field-input" placeholder="ex: 15/05"></div>
+            <div><label class="field-label">DESCRIÇÃO</label><input id="pm-desc" class="field-input" placeholder="ex: Parcela 1"></div>
+          </div>
+          <div style="margin-bottom:12px">
+            <label class="field-label" style="color:#6B9E78">VALOR (R$)</label>
+            <input id="pm-val" class="field-input" style="font-weight:bold; color:#6B9E78" placeholder="0,00" oninput="this.value = maskCurrency(this.value);">
+          </div>
+          <button onclick="confirmAddModalPayment('${type}', ${index})" style="width:100%; padding:10px; background:#6B9E78; border:none; color:#fff; border-radius:8px; cursor:pointer; font-weight:bold">Adicionar</button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  // Remove existing modal if any
+  const existing = document.getElementById('payments-submodal');
+  if (existing) existing.remove();
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function confirmAddModalPayment(type, index) {
+  const item = type === 'flight' ? flightState[index] : hotelState[index];
+  const dateStr = document.getElementById('pm-date').value;
+  const descStr = document.getElementById('pm-desc').value;
+  const valStr = document.getElementById('pm-val').value;
+  
+  const val = parseCurrency(valStr);
+  if (val <= 0) {
+    alert("Insira um valor maior que zero.");
+    return;
+  }
+
+  item.payments.push({ id: Date.now(), date: dateStr, desc: descStr, value: val });
+  saveState();
+  render(); // Updates the main card background
+  openPaymentsModal(type, index); // Re-open to refresh the list
+}
+
+function deleteModalPayment(type, index, pIdx) {
+  if (!confirm("Excluir este pagamento?")) return;
+  const item = type === 'flight' ? flightState[index] : hotelState[index];
+  item.payments.splice(pIdx, 1);
+  saveState();
+  render();
+  openPaymentsModal(type, index);
+}
+
+function closePaymentsModal() {
+  const modal = document.getElementById('payments-submodal');
+  if (modal) modal.remove();
 }

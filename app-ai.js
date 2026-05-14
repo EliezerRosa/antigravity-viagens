@@ -55,7 +55,7 @@ function getFlightSubItems() {
     const aiPrice = opt ? parseFloat(opt.preco) || 0 : 0;
     const actualPrice = parseFloat(fs.price) || 0;
     const finalPrice = actualPrice > 0 ? actualPrice : aiPrice;
-    const actualPaid = parseFloat(fs.paid) || 0;
+    const actualPaid = fs.payments ? fs.payments.reduce((a,p)=>a+parseFloat(p.value||0),0) : (parseFloat(fs.paid) || 0);
     
     return { label:`${fs.from||'?'} → ${fs.to||'?'}`, date:fs.date||'?', detail:fs.airline || "—", value:finalPrice, paid:actualPaid, confirmed:fs.confirmed };
   });
@@ -64,7 +64,7 @@ function getFlightSubItems() {
 function getHotelSubItems() {
   return hotelState.map((hs, i) => {
     const total = parseFloat(hs.totalValue) || 0;
-    const actualPaid = parseFloat(hs.paid) || 0;
+    const actualPaid = hs.payments ? hs.payments.reduce((a,p)=>a+parseFloat(p.value||0),0) : (parseFloat(hs.paid) || 0);
     let nights = 0;
     if(hs.checkin_iso && hs.checkout_iso) {
        nights = Math.round((new Date(hs.checkout_iso) - new Date(hs.checkin_iso)) / 86400000);
