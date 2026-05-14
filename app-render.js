@@ -121,14 +121,14 @@ function renderFlights() {
         ["obs", "Observações", "ex: check-in online"]
       ];
       
-      const idealFlds = `<div class="grid-2" style="margin-bottom:12px"><div><label class="field-label">⏰ HORÁRIO IDEAL PARTIDA</label><input class="field-input" value="${esc(fs.idealDep||'')}" placeholder="ex: após 07:00" oninput="setFlightField(${i},'idealDep',this.value)"></div><div><label class="field-label">⏰ HORÁRIO IDEAL CHEGADA</label><input class="field-input" value="${esc(fs.idealArr||'')}" placeholder="ex: antes das 12:00" oninput="setFlightField(${i},'idealArr',this.value)"></div></div>`;
+      const idealFlds = `<div class="grid-2" style="margin-bottom:12px"><div><label class="field-label">⏰ HORÁRIO IDEAL PARTIDA</label><input class="field-input" value="${esc(fs.idealDep||'')}" placeholder="ex: após 07:00" onchange="setFlightField(${i},'idealDep',this.value)"></div><div><label class="field-label">⏰ HORÁRIO IDEAL CHEGADA</label><input class="field-input" value="${esc(fs.idealArr||'')}" placeholder="ex: antes das 12:00" onchange="setFlightField(${i},'idealArr',this.value)"></div></div>`;
       
       const editBaseFlds = `<div style="border-top:1px solid rgba(255,255,255,0.06);margin:14px 0 10px"></div><span class="section-title">EDITAR TRECHO</span>
         <div class="grid-2" style="margin-bottom:12px">
-          <div><label class="field-label">ORIGEM (SIGLA)</label><input class="field-input" value="${esc(fs.from||'')}" placeholder="ex: GRU" oninput="setFlightField(${i},'from',this.value.toUpperCase())"></div>
-          <div><label class="field-label">DESTINO (SIGLA)</label><input class="field-input" value="${esc(fs.to||'')}" placeholder="ex: CWB" oninput="setFlightField(${i},'to',this.value.toUpperCase())"></div>
-          <div><label class="field-label">DATA FORMATADA</label><input class="field-input" value="${esc(fs.date||'')}" placeholder="ex: 20/06" oninput="setFlightField(${i},'date',this.value)"></div>
-          <div><label class="field-label">DATA ISO (PARA BUSCAS)</label><input class="field-input" type="date" value="${esc(fs.iso||'')}" oninput="setFlightField(${i},'iso',this.value)"></div>
+          <div><label class="field-label">ORIGEM (SIGLA)</label><input class="field-input" value="${esc(fs.from||'')}" placeholder="ex: GRU" onchange="setFlightField(${i},'from',this.value.toUpperCase())"></div>
+          <div><label class="field-label">DESTINO (SIGLA)</label><input class="field-input" value="${esc(fs.to||'')}" placeholder="ex: CWB" onchange="setFlightField(${i},'to',this.value.toUpperCase())"></div>
+          <div><label class="field-label">DATA FORMATADA</label><input class="field-input" value="${esc(fs.date||'')}" placeholder="ex: 20/06" onchange="setFlightField(${i},'date',this.value)"></div>
+          <div><label class="field-label">DATA ISO (PARA BUSCAS)</label><input class="field-input" type="date" value="${esc(fs.iso||'')}" onchange="setFlightField(${i},'iso',this.value)"></div>
         </div>`;
 
       body = `<div class="card-body">
@@ -146,11 +146,16 @@ function renderFlights() {
         <div style="border-top:1px solid rgba(255,255,255,0.06);margin:10px 0 14px"></div>
         <span class="section-title">DADOS DO VOO CONFIRMADO</span>
         <div class="grid-2">
-          ${flds.map(([k,l,p])=>`<div><label class="field-label">${l.toUpperCase()}</label><input class="field-input" value="${esc(fs[k]||'')}" placeholder="${p}" oninput="setFlightField(${i},'${k}',this.value)"></div>`).join("")}
-          <div style="grid-column: span 2">
-            <label class="field-label" style="color:#6B9E78">VALOR PAGO NESTE TRECHO (R$)</label>
+          ${flds.map(([k,l,p])=>`<div><label class="field-label">${l.toUpperCase()}</label><input class="field-input" value="${esc(fs[k]||'')}" placeholder="${p}" onchange="setFlightField(${i},'${k}',this.value)"></div>`).join("")}
+          <div style="grid-column: span 1">
+            <label class="field-label" style="color:#6B9E78">CUSTO TOTAL (R$)</label>
             <input class="field-input" style="font-size:16px;font-weight:bold;color:#6B9E78" value="${fs.price ? fmtBR(fs.price) : ''}" placeholder="0,00" 
-              oninput="this.value = maskCurrency(this.value); setFlightField(${i},'price',parseCurrency(this.value))">
+              oninput="this.value = maskCurrency(this.value);" onchange="setFlightField(${i},'price',parseCurrency(this.value))">
+          </div>
+          <div style="grid-column: span 1">
+            <label class="field-label" style="color:#D4875C">VALOR JÁ PAGO (R$)</label>
+            <input class="field-input" style="font-size:16px;font-weight:bold;color:#D4875C" value="${fs.paid ? fmtBR(fs.paid) : ''}" placeholder="0,00" 
+              oninput="this.value = maskCurrency(this.value);" onchange="setFlightField(${i},'paid',parseCurrency(this.value))">
           </div>
         </div>
         <div style="margin-top: 16px; text-align: right;">
@@ -184,7 +189,7 @@ function renderFlights() {
 
 function toggleFlightConfirm(i) { flightState[i].confirmed = !flightState[i].confirmed; flightState[i].expanded = flightState[i].confirmed; saveState(); render(); }
 function toggleFlightExpand(i) { flightState[i].expanded = !flightState[i].expanded; render(); }
-function setFlightField(i, k, v) { flightState[i][k] = v; saveState(); }
+function setFlightField(i, k, v) { flightState[i][k] = v; saveState(); render(); }
 function setFlightAirline(i, a) { flightState[i].airline = flightState[i].airline === a ? "" : a; saveState(); render(); }
 function addFlight() {
   flightState.push({ id: Date.now(), from:"", to:"", date:"", iso:"", airlines:["LATAM","GOL","Azul"], confirmed:false, expanded:true, airline:"", number:"", departure:"", arrival:"", seat:"", terminal:"", obs:"", idealDep:"", idealArr:"", price:"" });
@@ -222,10 +227,10 @@ function renderHotels() {
 
       const editBaseFlds = `<div style="border-top:1px solid rgba(255,255,255,0.06);margin:14px 0 10px"></div><span class="section-title">EDITAR HOTEL</span>
         <div class="grid-2" style="margin-bottom:12px">
-          <div><label class="field-label">CIDADE</label><input class="field-input" value="${esc(hs.city||'')}" placeholder="ex: Curitiba" oninput="setHotelField(${i},'city',this.value)"></div>
-          <div><label class="field-label">NOME DO HOTEL</label><input class="field-input" value="${esc(hs.name||'')}" placeholder="ex: Hotel X" oninput="setHotelField(${i},'name',this.value)"></div>
-          <div><label class="field-label">DATA CHECK-IN</label><input class="field-input" type="date" value="${esc(hs.checkin_iso||'')}" oninput="setHotelField(${i},'checkin_iso',this.value)"></div>
-          <div><label class="field-label">DATA CHECK-OUT</label><input class="field-input" type="date" value="${esc(hs.checkout_iso||'')}" oninput="setHotelField(${i},'checkout_iso',this.value)"></div>
+          <div><label class="field-label">CIDADE</label><input class="field-input" value="${esc(hs.city||'')}" placeholder="ex: Curitiba" onchange="setHotelField(${i},'city',this.value)"></div>
+          <div><label class="field-label">NOME DO HOTEL</label><input class="field-input" value="${esc(hs.name||'')}" placeholder="ex: Hotel X" onchange="setHotelField(${i},'name',this.value)"></div>
+          <div><label class="field-label">DATA CHECK-IN</label><input class="field-input" type="date" value="${esc(hs.checkin_iso||'')}" onchange="setHotelField(${i},'checkin_iso',this.value)"></div>
+          <div><label class="field-label">DATA CHECK-OUT</label><input class="field-input" type="date" value="${esc(hs.checkout_iso||'')}" onchange="setHotelField(${i},'checkout_iso',this.value)"></div>
         </div>`;
 
       body = `<div class="card-body">
@@ -235,23 +240,23 @@ function renderHotels() {
         <div style="border-top:1px solid rgba(255,255,255,0.06);margin:4px 0 14px"></div>
         <span class="section-title">DADOS DA RESERVA</span>
         <div class="grid-2" style="margin-bottom:12px">
-          ${flds.map(([k,l,p]) => `<div><label class="field-label">${l.toUpperCase()}</label><input class="field-input" value="${esc(hs[k]||'')}" placeholder="${p}" oninput="setHotelField(${i},'${k}',this.value)"></div>`).join("")}
+          ${flds.map(([k,l,p]) => `<div><label class="field-label">${l.toUpperCase()}</label><input class="field-input" value="${esc(hs[k]||'')}" placeholder="${p}" onchange="setHotelField(${i},'${k}',this.value)"></div>`).join("")}
           <div>
             <label class="field-label">VALOR DA DIÁRIA (R$)</label>
-            <input class="field-input" value="${hs.diaria ? fmtBR(hs.diaria) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value); setHotelField(${i},'diaria',parseCurrency(this.value))">
+            <input class="field-input" value="${hs.diaria ? fmtBR(hs.diaria) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value);" onchange="setHotelField(${i},'diaria',parseCurrency(this.value))">
           </div>
           <div>
             <label class="field-label" style="color:#6B9E78;font-weight:bold">VALOR TOTAL (R$)</label>
-            <input class="field-input" style="color:#6B9E78;font-weight:bold" value="${hs.totalValue ? fmtBR(hs.totalValue) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value); setHotelField(${i},'totalValue',parseCurrency(this.value))">
+            <input class="field-input" style="color:#6B9E78;font-weight:bold" value="${hs.totalValue ? fmtBR(hs.totalValue) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value);" onchange="setHotelField(${i},'totalValue',parseCurrency(this.value))">
           </div>
         </div>
         <span class="section-title">PAGAMENTO</span>
         <div class="grid-2" style="margin-bottom:10px">
-          <div><label class="field-label">FORMA DE PAGAMENTO</label><input class="field-input" value="${esc(hs.payMethod||'')}" placeholder="ex: Cartão / PIX" oninput="setHotelField(${i},'payMethod',this.value)"></div>
-          <div><label class="field-label">VALOR PAGO (R$)</label><input class="field-input" value="${hs.paid ? fmtBR(hs.paid) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value); setHotelField(${i},'paid',parseCurrency(this.value))"></div>
+          <div><label class="field-label">FORMA DE PAGAMENTO</label><input class="field-input" value="${esc(hs.payMethod||'')}" placeholder="ex: Cartão / PIX" onchange="setHotelField(${i},'payMethod',this.value)"></div>
+          <div><label class="field-label" style="color:#D4875C;font-weight:bold">VALOR PAGO (R$)</label><input class="field-input" style="color:#D4875C;font-weight:bold" value="${hs.paid ? fmtBR(hs.paid) : ''}" placeholder="0,00" oninput="this.value = maskCurrency(this.value);" onchange="setHotelField(${i},'paid',parseCurrency(this.value))"></div>
         </div>
         <div class="pay-btns">${payBtns}</div>
-        <div><label class="field-label">OBSERVAÇÕES</label><input class="field-input" value="${esc(hs.obs||'')}" placeholder="ex: café incluso, cancelamento grátis" oninput="setHotelField(${i},'obs',this.value)"></div>
+        <div><label class="field-label">OBSERVAÇÕES</label><input class="field-input" value="${esc(hs.obs||'')}" placeholder="ex: café incluso, cancelamento grátis" onchange="setHotelField(${i},'obs',this.value)"></div>
         <div style="margin-top: 16px; text-align: right;">
           <button onclick="deleteHotel(${i})" style="background:rgba(232,0,61,0.1);border:1px solid rgba(232,0,61,0.3);color:#E8003D;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer">🗑️ Excluir Hotel</button>
         </div>
@@ -278,7 +283,7 @@ function renderHotels() {
 
 function toggleHotelConfirm(i) { hotelState[i].confirmed = !hotelState[i].confirmed; hotelState[i].expanded = hotelState[i].confirmed; saveState(); render(); }
 function toggleHotelExpand(i) { hotelState[i].expanded = !hotelState[i].expanded; render(); }
-function setHotelField(i, k, v) { hotelState[i][k] = v; saveState(); }
+function setHotelField(i, k, v) { hotelState[i][k] = v; saveState(); render(); }
 function setHotelPayStatus(i, s) { hotelState[i].payStatus = hotelState[i].payStatus === s ? "" : s; saveState(); render(); }
 function addHotel() {
   hotelState.push({ id: Date.now(), city:"", name:"", emoji:"🏨", color:"#5D7A8A", checkin_iso:"", checkout_iso:"", confirmed:false, expanded:true, code:"", checkinTime:"", checkoutTime:"", room:"", diaria:"", totalValue:"", paid:"", payMethod:"", payStatus:"", obs:"" });

@@ -12,12 +12,17 @@ function renderMeals() {
     html += `
       <div class="card" style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);padding:16px;margin-bottom:12px">
         <div class="grid-2" style="margin-bottom:12px">
-          <div><label class="field-label">DATA / HORA</label><input class="field-input" value="${esc(m.date||'')}" placeholder="ex: 20/06 12:30" oninput="setMealField(${i},'date',this.value)"></div>
-          <div><label class="field-label">NOME / LOCAL</label><input class="field-input" value="${esc(m.name||'')}" placeholder="ex: Almoço Praia" oninput="setMealField(${i},'name',this.value)"></div>
-          <div style="grid-column: span 2">
-            <label class="field-label" style="color:#6B9E78">VALOR (R$)</label>
+          <div><label class="field-label">DATA / HORA</label><input class="field-input" value="${esc(m.date||'')}" placeholder="ex: 20/06 12:30" onchange="setMealField(${i},'date',this.value)"></div>
+          <div><label class="field-label">NOME / LOCAL</label><input class="field-input" value="${esc(m.name||'')}" placeholder="ex: Almoço Praia" onchange="setMealField(${i},'name',this.value)"></div>
+          <div style="grid-column: span 1">
+            <label class="field-label" style="color:#6B9E78">CUSTO TOTAL (R$)</label>
             <input class="field-input" style="font-size:16px;font-weight:bold;color:#6B9E78" value="${m.value ? fmtBR(m.value) : ''}" placeholder="0,00" 
-              oninput="this.value = maskCurrency(this.value); setMealField(${i},'value',parseCurrency(this.value))">
+              oninput="this.value = maskCurrency(this.value);" onchange="setMealField(${i},'value',parseCurrency(this.value))">
+          </div>
+          <div style="grid-column: span 1">
+            <label class="field-label" style="color:#D4875C">VALOR JÁ PAGO (R$)</label>
+            <input class="field-input" style="font-size:16px;font-weight:bold;color:#D4875C" value="${m.paid ? fmtBR(m.paid) : ''}" placeholder="0,00" 
+              oninput="this.value = maskCurrency(this.value);" onchange="setMealField(${i},'paid',parseCurrency(this.value))">
           </div>
         </div>
         <div style="text-align: right;">
@@ -46,26 +51,29 @@ function getFlightSubItems() {
     const aiPrice = opt ? parseFloat(opt.preco) || 0 : 0;
     const actualPrice = parseFloat(fs.price) || 0;
     const finalPrice = actualPrice > 0 ? actualPrice : aiPrice;
+    const actualPaid = parseFloat(fs.paid) || 0;
     
-    return { label:`${fs.from||'?'} → ${fs.to||'?'}`, date:fs.date||'?', detail:fs.airline || "—", value:finalPrice, confirmed:fs.confirmed };
+    return { label:`${fs.from||'?'} → ${fs.to||'?'}`, date:fs.date||'?', detail:fs.airline || "—", value:finalPrice, paid:actualPaid, confirmed:fs.confirmed };
   });
 }
 
 function getHotelSubItems() {
   return hotelState.map((hs, i) => {
     const total = parseFloat(hs.totalValue) || 0;
+    const actualPaid = parseFloat(hs.paid) || 0;
     let nights = 0;
     if(hs.checkin_iso && hs.checkout_iso) {
        nights = Math.round((new Date(hs.checkout_iso) - new Date(hs.checkin_iso)) / 86400000);
     }
-    return { label:`${hs.emoji||'🏨'} ${hs.city||'?'}`, date:`${hs.checkin_iso||'?'}→${hs.checkout_iso||'?'}`, detail:`${nights}n`, value:total, confirmed:hs.confirmed };
+    return { label:`${hs.emoji||'🏨'} ${hs.city||'?'}`, date:`${hs.checkin_iso||'?'}→${hs.checkout_iso||'?'}`, detail:`${nights}n`, value:total, paid:actualPaid, confirmed:hs.confirmed };
   });
 }
 
 function getMealSubItems() {
   return mealsState.map((m, i) => {
     const val = parseFloat(m.value) || 0;
-    return { label:`${m.name||'Refeição'}`, date:m.date||'?', detail:"", value:val, confirmed:true };
+    const actualPaid = parseFloat(m.paid) || 0;
+    return { label:`${m.name||'Refeição'}`, date:m.date||'?', detail:"", value:val, paid:actualPaid, confirmed:true };
   });
 }
 
@@ -73,6 +81,13 @@ function getAutoEstimate(catId) {
   if (catId === 1) { const s = getFlightSubItems().reduce((a,b) => a+b.value, 0); return s > 0 ? s : null; }
   if (catId === 2) { const s = getHotelSubItems().reduce((a,b) => a+b.value, 0); return s > 0 ? s : null; }
   if (catId === 3) { const s = getMealSubItems().reduce((a,b) => a+b.value, 0); return s > 0 ? s : null; }
+  return null;
+}
+
+function getAutoPaid(catId) {
+  if (catId === 1) { const s = getFlightSubItems().reduce((a,b) => a+(b.paid||0), 0); return s > 0 ? s : null; }
+  if (catId === 2) { const s = getHotelSubItems().reduce((a,b) => a+(b.paid||0), 0); return s > 0 ? s : null; }
+  if (catId === 3) { const s = getMealSubItems().reduce((a,b) => a+(b.paid||0), 0); return s > 0 ? s : null; }
   return null;
 }
 
@@ -107,14 +122,15 @@ function renderExpenses() {
   // Build items with auto-estimates
   const items = expState.map(e => {
     const auto = getAutoEstimate(e.id);
-    return { ...e, displayEst: auto !== null ? auto : e.estimated, isAuto: auto !== null && auto !== e.estimated };
+    const autoP = getAutoPaid(e.id);
+    return { ...e, displayEst: auto !== null ? auto : e.estimated, displayPaid: autoP !== null ? autoP : e.paid, isAuto: auto !== null && auto !== e.estimated, isAutoPaid: autoP !== null };
   });
   const allItems = [
     ...items,
-    ...customExpenses.map((c,i) => ({ ...c, displayEst: c.estimated||0, isAuto:false, isCustom:true, color:customColorPool[i%customColorPool.length] }))
+    ...customExpenses.map((c,i) => ({ ...c, displayEst: c.estimated||0, displayPaid: parseFloat(c.paid)||0, isAuto:false, isAutoPaid:false, isCustom:true, color:customColorPool[i%customColorPool.length] }))
   ];
   const totalEst = allItems.reduce((s,e) => s+(e.displayEst||0), 0);
-  const totalPaid = allItems.reduce((s,e) => s+(parseFloat(e.paid)||0), 0);
+  const totalPaid = allItems.reduce((s,e) => s+(e.displayPaid||0), 0);
   const totalDiff = totalEst - totalPaid;
   const pct = totalEst > 0 ? Math.min((totalPaid/totalEst)*100, 100) : 0;
 
@@ -125,7 +141,7 @@ function renderExpenses() {
 
   // Cards
   const cards = allItems.map((e, idx) => {
-    const est = e.displayEst||0, paid = parseFloat(e.paid)||0, diff = est-paid, hp = e.paid!==""&&e.paid!==undefined&&e.paid!=="";
+    const est = e.displayEst||0, paid = e.displayPaid||0, diff = est-paid, hp = paid > 0 || (e.paid!==""&&e.paid!==undefined);
     const color = e.color || catColors[e.id] || "#8A9BAB";
     const diffTooltip = "Saldo restante: Verde indica que o gasto está dentro do orçado. Vermelho indica que o valor pago ultrapassou a estimativa.";
     const dH = hp ? `<div class="exp-diff" title="${diffTooltip}" style="cursor:help;background:${diff>=0?"rgba(107,158,120,0.15)":"rgba(180,80,80,0.15)"};color:${diff>=0?"#6B9E78":"#E07070"};border:1px solid ${diff>=0?"rgba(107,158,120,0.3)":"rgba(180,80,80,0.3)"}">${diff>=0?"−":"+"} R$ ${fmtBR(Math.abs(diff))}</div>` : "";
@@ -137,12 +153,18 @@ function renderExpenses() {
     if (e.id === 3) subs = renderSubItems(getMealSubItems());
     
     const handler = e.isCustom ? `setCustomExpPaid('${e.id}',parseCurrency(this.value))` : `setExpPaid(${idx},parseCurrency(this.value))`;
+    
+    const isLocked = e.id===1 || e.id===2 || e.id===3;
+    const inputHtml = isLocked ? 
+      `<input type="text" class="field-input" title="Este valor é calculado automaticamente pela soma das abas correspondentes." value="${paid ? fmtBR(paid) : ''}" disabled style="padding:8px 12px;font-size:13px;font-weight:bold;color:${color};background:rgba(0,0,0,0.2);opacity:0.8;cursor:not-allowed">` :
+      `<input type="text" class="field-input" placeholder="O que já foi pago (R$)" title="Insira aqui o valor que você já desembolsou/pagou efetivamente." value="${e.paid ? fmtBR(e.paid) : ''}" oninput="this.value = maskCurrency(this.value);" onchange="${handler};" style="padding:8px 12px;font-size:13px;font-weight:bold;color:${color}">`;
+
     return `<div class="exp-card" style="border-left:3px solid ${color}"><div class="exp-row"><div style="flex:1"><div style="display:flex;align-items:center;gap:6px">\
 <span style="font-size:13px;color:#E8DFC8;font-weight:600">${e.category}</span>${autoBadge}${removeBtn}</div>\
 <div style="font-size:11px;color:#6A8A9A;margin-top:2px">${e.item}</div></div>\
 <div style="text-align:right;cursor:help" title="Valor total estimado para a categoria. Itens 'SYNC' são somados automaticamente das outras abas."><div style="font-size:10px;color:#8A9BAB;letter-spacing:.5px">Estimado</div>\
 <div style="font-size:16px;color:${color};font-weight:700">R$ ${fmtBR(est)}</div></div></div>\
-${subs}<div class="exp-input-row"><div style="flex:1"><input type="text" class="field-input" placeholder="O que já foi pago (R$)" title="Insira aqui o valor que você já desembolsou/pagou efetivamente." value="${e.paid ? fmtBR(e.paid) : ''}" oninput="this.value = maskCurrency(this.value); ${handler}" style="padding:8px 12px;font-size:13px;font-weight:bold;color:${color}"></div>${dH}</div></div>`;
+${subs}<div class="exp-input-row"><div style="flex:1">${inputHtml}</div>${dH}</div></div>`;
   }).join("");
 
   // Add button
@@ -231,13 +253,14 @@ function renderAI() {
   const resultHTML = aiState.lastResult ? `<div class="ai-result"><div style="font-size:10px;letter-spacing:2px;color:#D4875C;margin-bottom:8px;font-weight:600">🤖 ANÁLISE DO GEMINI PRO</div>${aiState.lastResult}</div>` : "";
 
   return `
-    <div class="ai-glass">
-      <div style="text-align:center;margin-bottom:16px">
+    <details class="ai-glass" style="cursor:default">
+      <summary style="text-align:center;margin-bottom:16px;cursor:pointer;list-style:none;outline:none;user-select:none">
         <div style="font-size:28px;margin-bottom:6px">🤖</div>
         <div style="font-size:18px;font-weight:600;color:#F0E6D0;margin-bottom:4px">Assistente de Viagem IA</div>
-        <div style="font-size:12px;color:#8A9BAB">Gemini Pro + Google Search · Busca e analisa automaticamente</div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px">${modeBtn("flight","Voos","✈️")}${modeBtn("hotel","Hotéis","🏨")}</div>
+        <div style="font-size:12px;color:#8A9BAB;display:flex;align-items:center;justify-content:center;gap:6px"><span>Gemini Pro + Google Search · Busca e analisa automaticamente</span><span style="font-size:10px">▼</span></div>
+      </summary>
+      <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.06);padding-top:16px">
+        <div style="display:flex;gap:8px;margin-bottom:16px">${modeBtn("flight","Voos","✈️")}${modeBtn("hotel","Hotéis","🏨")}</div>
 
       <div style="background:rgba(74,171,189,0.08);border:1px solid rgba(74,171,189,0.2);border-radius:14px;padding:16px;margin-bottom:16px">
         <div style="font-size:11px;letter-spacing:2px;color:#4AABBD;margin-bottom:10px;font-weight:600">🔍 BUSCA AUTOMÁTICA COM IA</div>
@@ -272,7 +295,8 @@ function renderAI() {
         🤖 Analisar Opcoes Manuais com Gemini
       </button>
       ${resultHTML}
-    </div>`;
+      </div>
+    </details>`;
 }
 
 function setAIMode(m) { aiState.mode=m; saveState(); render(); }
