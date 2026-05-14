@@ -1,8 +1,12 @@
 // Service Worker — Painel de Viagem Brasil PWA
-const CACHE_NAME = 'viagem-brasil-v2';
+const CACHE_NAME = 'viagem-brasil-v3';
 const ASSETS = [
   './',
-  './viagem-brasil_2.html',
+  './index.html',
+  './style.css',
+  './app-data.js',
+  './app-render.js',
+  './app-ai.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
