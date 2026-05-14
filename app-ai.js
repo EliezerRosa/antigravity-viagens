@@ -1,19 +1,23 @@
 // ─── MEALS ───────────────────────────────────────────────────────────────────
-function renderMeals() {
-  let html = `<p class="section-hint" style="line-height:1.6">🥗 Controle de alimentação e gastos por refeição</p>`;
+const DIARY_CATEGORIES = ["🥗 Alimentação", "🚗 Transporte", "🎫 Passeios", "🛡️ Seguro Viagem", "🎁 Souvenirs", "📱 Comunicação", "💊 Saúde", "👕 Vestuário", "📋 Outros"];
+
+function renderDiary() {
+  let html = `<p class="section-hint" style="line-height:1.6">📖 Diário de Bordo: Registre refeições, transportes, passeios e outros gastos ao longo da viagem</p>`;
   
   const total = mealsState.reduce((sum, m) => sum + (parseFloat(m.value) || 0), 0);
   html += `<div style="text-align:center;margin-bottom:16px;padding:12px;background:rgba(107,158,120,0.1);border:1px solid rgba(107,158,120,0.3);border-radius:12px;color:#6B9E78">
-    <span style="font-size:11px;letter-spacing:1px;display:block;margin-bottom:4px">TOTAL GASTO EM REFEIÇÕES</span>
+    <span style="font-size:11px;letter-spacing:1px;display:block;margin-bottom:4px">TOTAL GASTO NO DIÁRIO</span>
     <span style="font-size:22px;font-weight:bold">R$ ${fmtBR(total)}</span>
   </div>`;
 
   mealsState.forEach((m, i) => {
+    const catOptsHtml = DIARY_CATEGORIES.map(c => `<option value="${c}" ${(m.cat || '🥗 Alimentação') === c ? 'selected' : ''}>${c}</option>`).join("");
     html += `
       <div class="card" style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);padding:16px;margin-bottom:12px">
         <div class="grid-2" style="margin-bottom:12px">
+          <div><label class="field-label">CATEGORIA</label><select class="field-input" onchange="setMealField(${i},'cat',this.value)">${catOptsHtml}</select></div>
           <div><label class="field-label">DATA / HORA</label><input class="field-input" value="${esc(m.date||'')}" placeholder="ex: 20/06 12:30" onchange="setMealField(${i},'date',this.value)"></div>
-          <div><label class="field-label">NOME / LOCAL</label><input class="field-input" value="${esc(m.name||'')}" placeholder="ex: Almoço Praia" onchange="setMealField(${i},'name',this.value)"></div>
+          <div style="grid-column: span 2"><label class="field-label">DESCRIÇÃO / LOCAL</label><input class="field-input" value="${esc(m.name||'')}" placeholder="ex: Almoço Praia ou Uber Aeroporto" onchange="setMealField(${i},'name',this.value)"></div>
           <div style="grid-column: span 1">
             <label class="field-label" style="color:#6B9E78">CUSTO TOTAL (R$)</label>
             <input class="field-input" style="font-size:16px;font-weight:bold;color:#6B9E78" value="${m.value ? fmtBR(m.value) : ''}" placeholder="0,00" 
@@ -26,19 +30,19 @@ function renderMeals() {
           </div>
         </div>
         <div style="text-align: right;">
-          <button onclick="deleteMeal(${i})" style="background:rgba(232,0,61,0.1);border:1px solid rgba(232,0,61,0.3);color:#E8003D;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer">🗑️ Excluir Refeição</button>
+          <button onclick="deleteMeal(${i})" style="background:rgba(232,0,61,0.1);border:1px solid rgba(232,0,61,0.3);color:#E8003D;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer">🗑️ Excluir Item</button>
         </div>
       </div>`;
   });
 
-  html += `<button onclick="addMeal()" style="width:100%;margin-bottom:20px;padding:12px;background:rgba(107,158,120,0.1);border:1px dashed rgba(107,158,120,0.3);color:#6B9E78;border-radius:12px;cursor:pointer;font-weight:600">+ Adicionar Refeição</button>`;
+  html += `<button onclick="addMeal()" style="width:100%;margin-bottom:20px;padding:12px;background:rgba(107,158,120,0.1);border:1px dashed rgba(107,158,120,0.3);color:#6B9E78;border-radius:12px;cursor:pointer;font-weight:600">+ Adicionar Item no Diário</button>`;
 
   return html;
 }
 
 function setMealField(i, k, v) { mealsState[i][k] = v; saveState(); render(); }
-function addMeal() { mealsState.push({ id: Date.now(), date: "", name: "", value: "" }); saveState(); render(); }
-function deleteMeal(i) { if(confirm("Excluir esta refeição?")) { mealsState.splice(i, 1); saveState(); render(); } }
+function addMeal() { mealsState.push({ id: Date.now(), cat: "🥗 Alimentação", date: "", name: "", value: "", paid: "" }); saveState(); render(); }
+function deleteMeal(i) { if(confirm("Excluir este item do diário?")) { mealsState.splice(i, 1); saveState(); render(); } }
 
 // ─── EXPENSES (ENHANCED) ─────────────────────────────────────────────────────
 const catColors = { 1:"#D4875C", 2:"#4AABBD", 3:"#6B9E78", 4:"#8A9BAB" };
@@ -69,26 +73,24 @@ function getHotelSubItems() {
   });
 }
 
-function getMealSubItems() {
-  return mealsState.map((m, i) => {
+function getDiarySubItems(categoryName) {
+  return mealsState.filter(m => (m.cat || '🥗 Alimentação') === categoryName).map((m, i) => {
     const val = parseFloat(m.value) || 0;
     const actualPaid = parseFloat(m.paid) || 0;
-    return { label:`${m.name||'Refeição'}`, date:m.date||'?', detail:"", value:val, paid:actualPaid, confirmed:true };
+    return { label:`${m.name||'Item'}`, date:m.date||'?', detail:"", value:val, paid:actualPaid, confirmed:true };
   });
 }
 
-function getAutoEstimate(catId) {
+function getAutoEstimate(catId, categoryName) {
   if (catId === 1) { const s = getFlightSubItems().reduce((a,b) => a+b.value, 0); return s > 0 ? s : null; }
   if (catId === 2) { const s = getHotelSubItems().reduce((a,b) => a+b.value, 0); return s > 0 ? s : null; }
-  if (catId === 3) { const s = getMealSubItems().reduce((a,b) => a+b.value, 0); return s > 0 ? s : null; }
-  return null;
+  const s = getDiarySubItems(categoryName).reduce((a,b) => a+b.value, 0); return s > 0 ? s : null;
 }
 
-function getAutoPaid(catId) {
+function getAutoPaid(catId, categoryName) {
   if (catId === 1) { const s = getFlightSubItems().reduce((a,b) => a+(b.paid||0), 0); return s > 0 ? s : null; }
   if (catId === 2) { const s = getHotelSubItems().reduce((a,b) => a+(b.paid||0), 0); return s > 0 ? s : null; }
-  if (catId === 3) { const s = getMealSubItems().reduce((a,b) => a+(b.paid||0), 0); return s > 0 ? s : null; }
-  return null;
+  const s = getDiarySubItems(categoryName).reduce((a,b) => a+(b.paid||0), 0); return s > 0 ? s : null;
 }
 
 function renderDonut(segments) {
@@ -121,13 +123,17 @@ function renderExpenses() {
   const flightSubs = getFlightSubItems(), hotelSubs = getHotelSubItems();
   // Build items with auto-estimates
   const items = expState.map(e => {
-    const auto = getAutoEstimate(e.id);
-    const autoP = getAutoPaid(e.id);
+    const auto = getAutoEstimate(e.id, e.category);
+    const autoP = getAutoPaid(e.id, e.category);
     return { ...e, displayEst: auto !== null ? auto : e.estimated, displayPaid: autoP !== null ? autoP : e.paid, isAuto: auto !== null && auto !== e.estimated, isAutoPaid: autoP !== null };
   });
   const allItems = [
     ...items,
-    ...customExpenses.map((c,i) => ({ ...c, displayEst: c.estimated||0, displayPaid: parseFloat(c.paid)||0, isAuto:false, isAutoPaid:false, isCustom:true, color:customColorPool[i%customColorPool.length] }))
+    ...customExpenses.map((c,i) => {
+      const auto = getAutoEstimate(c.id, c.category);
+      const autoP = getAutoPaid(c.id, c.category);
+      return { ...c, displayEst: auto !== null ? auto : (c.estimated||0), displayPaid: autoP !== null ? autoP : (parseFloat(c.paid)||0), isAuto: auto !== null, isAutoPaid: autoP !== null, isCustom:true, color:customColorPool[i%customColorPool.length] };
+    })
   ];
   const totalEst = allItems.reduce((s,e) => s+(e.displayEst||0), 0);
   const totalPaid = allItems.reduce((s,e) => s+(e.displayPaid||0), 0);
@@ -149,12 +155,12 @@ function renderExpenses() {
     const removeBtn = e.isCustom ? `<button onclick="removeCustomExpense('${e.id}')" class="exp-remove-btn" title="Remover">✕</button>` : "";
     let subs = "";
     if (e.id === 1) subs = renderSubItems(flightSubs);
-    if (e.id === 2) subs = renderSubItems(hotelSubs);
-    if (e.id === 3) subs = renderSubItems(getMealSubItems());
+    else if (e.id === 2) subs = renderSubItems(hotelSubs);
+    else subs = renderSubItems(getDiarySubItems(e.category));
     
     const handler = e.isCustom ? `setCustomExpPaid('${e.id}',parseCurrency(this.value))` : `setExpPaid(${idx},parseCurrency(this.value))`;
     
-    const isLocked = e.id===1 || e.id===2 || e.id===3;
+    const isLocked = e.id===1 || e.id===2 || getDiarySubItems(e.category).length > 0;
     const inputHtml = isLocked ? 
       `<input type="text" class="field-input" title="Este valor é calculado automaticamente pela soma das abas correspondentes." value="${paid ? fmtBR(paid) : ''}" disabled style="padding:8px 12px;font-size:13px;font-weight:bold;color:${color};background:rgba(0,0,0,0.2);opacity:0.8;cursor:not-allowed">` :
       `<input type="text" class="field-input" placeholder="O que já foi pago (R$)" title="Insira aqui o valor que você já desembolsou/pagou efetivamente." value="${e.paid ? fmtBR(e.paid) : ''}" oninput="this.value = maskCurrency(this.value);" onchange="${handler};" style="padding:8px 12px;font-size:13px;font-weight:bold;color:${color}">`;
@@ -172,10 +178,10 @@ ${subs}<div class="exp-input-row"><div style="flex:1">${inputHtml}</div>${dH}</d
   const addForm = `<div id="add-exp-form" style="display:none" class="exp-add-form">
     <div style="font-size:11px;letter-spacing:2px;color:#D4875C;margin-bottom:12px;font-weight:600">NOVO GASTO</div>
     <div class="grid-2" style="margin-bottom:8px"><div><label class="field-label">CATEGORIA</label>
-    <select id="new-exp-cat" class="field-input"><option>🎫 Passeios</option><option>🛡️ Seguro Viagem</option><option>🎁 Souvenirs</option><option>📱 Comunicação</option><option>💊 Saúde</option><option>👕 Vestuário</option><option>📋 Outros</option></select></div>
+    <select id="new-exp-cat" class="field-input">${DIARY_CATEGORIES.map(c => `<option>${c}</option>`).join("")}</select></div>
     <div><label class="field-label">DESCRIÇÃO</label><input id="new-exp-item" class="field-input" placeholder="ex: Ingressos museu"></div></div>
-    <div class="grid-2" style="margin-bottom:12px"><div><label class="field-label">VALOR ESTIMADO (R$)</label><input id="new-exp-est" class="field-input" type="number" placeholder="ex: 500"></div>
-    <div><label class="field-label">VALOR PAGO (R$)</label><input id="new-exp-paid" class="field-input" type="number" placeholder="0"></div></div>
+    <div class="grid-2" style="margin-bottom:12px"><div><label class="field-label">VALOR ESTIMADO (R$)</label><input id="new-exp-est" class="field-input" placeholder="0,00" oninput="this.value = maskCurrency(this.value)"></div>
+    <div><label class="field-label">VALOR PAGO (R$)</label><input id="new-exp-paid" class="field-input" placeholder="0,00" oninput="this.value = maskCurrency(this.value)"></div></div>
     <div style="display:flex;gap:8px"><button onclick="hideAddExpenseForm()" style="flex:1;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.15);color:#8A9BAB;border-radius:8px;cursor:pointer;font-family:Inter,sans-serif">Cancelar</button>
     <button onclick="confirmAddExpense()" style="flex:1;padding:10px;background:#6B9E78;border:none;color:#fff;border-radius:8px;cursor:pointer;font-weight:600;font-family:Inter,sans-serif">Adicionar</button></div></div>`;
 
@@ -196,8 +202,8 @@ function hideAddExpenseForm() { const f=document.getElementById("add-exp-form");
 function confirmAddExpense() {
   const cat=document.getElementById("new-exp-cat")?.value||"📋 Outros";
   const item=document.getElementById("new-exp-item")?.value||"Novo gasto";
-  const est=parseFloat(document.getElementById("new-exp-est")?.value)||0;
-  const paid=document.getElementById("new-exp-paid")?.value||"";
+  const est=parseCurrency(document.getElementById("new-exp-est")?.value)||0;
+  const paid=parseCurrency(document.getElementById("new-exp-paid")?.value)||"";
   customExpenses.push({ id:"cust_"+Date.now(), category:cat, item:item, estimated:est, paid:paid });
   saveState(); render(); showToast("✅ Gasto adicionado!");
 }
@@ -230,22 +236,22 @@ function renderAI() {
     const trechoOpts = flightState.map((f,i)=>`<option value="${i}">${f.from||'?'}→${f.to||'?'} ${f.date||'?'}</option>`).join("");
     optionsHTML = opts.map((o,i)=>`<div class="ai-option" style="position:relative">
       <div style="grid-column:1/-1;margin-bottom:4px"><label class="field-label">TRECHO</label><select class="field-input" onchange="setAIOpt(${i},'trecho',this.value)">${trechoOpts.replace(`value="${o.trecho||0}"`,`value="${o.trecho||0}" selected`)}</select></div>
-      <div><label class="field-label">SERVIÇO</label><input class="field-input" value="${esc(o.servico||'')}" placeholder="ex: Google Flights" oninput="setAIOpt(${i},'servico',this.value)"></div>
-      <div><label class="field-label">COMPANHIA</label><input class="field-input" value="${esc(o.companhia||'')}" placeholder="ex: LATAM" oninput="setAIOpt(${i},'companhia',this.value)"></div>
-      <div><label class="field-label">PREÇO (R$)</label><input class="field-input" type="number" value="${esc(o.preco||'')}" placeholder="ex: 450" oninput="setAIOpt(${i},'preco',this.value)"></div>
-      <div><label class="field-label">PARTIDA</label><input class="field-input" value="${esc(o.partida||'')}" placeholder="ex: 06:30" oninput="setAIOpt(${i},'partida',this.value)"></div>
-      <div><label class="field-label">CHEGADA</label><input class="field-input" value="${esc(o.chegada||'')}" placeholder="ex: 08:15" oninput="setAIOpt(${i},'chegada',this.value)"></div>
-      <div><label class="field-label">ESCALAS</label><input class="field-input" value="${esc(o.escalas||'')}" placeholder="0=direto" oninput="setAIOpt(${i},'escalas',this.value)"></div>
+      <div><label class="field-label">SERVIÇO</label><input class="field-input" value="${esc(o.servico||'')}" placeholder="ex: Google Flights" onchange="setAIOpt(${i},'servico',this.value)"></div>
+      <div><label class="field-label">COMPANHIA</label><input class="field-input" value="${esc(o.companhia||'')}" placeholder="ex: LATAM" onchange="setAIOpt(${i},'companhia',this.value)"></div>
+      <div><label class="field-label">PREÇO (R$)</label><input class="field-input" type="number" value="${esc(o.preco||'')}" placeholder="ex: 450" onchange="setAIOpt(${i},'preco',this.value)"></div>
+      <div><label class="field-label">PARTIDA</label><input class="field-input" value="${esc(o.partida||'')}" placeholder="ex: 06:30" onchange="setAIOpt(${i},'partida',this.value)"></div>
+      <div><label class="field-label">CHEGADA</label><input class="field-input" value="${esc(o.chegada||'')}" placeholder="ex: 08:15" onchange="setAIOpt(${i},'chegada',this.value)"></div>
+      <div><label class="field-label">ESCALAS</label><input class="field-input" value="${esc(o.escalas||'')}" placeholder="0=direto" onchange="setAIOpt(${i},'escalas',this.value)"></div>
       <button class="option-remove" onclick="removeAIOpt(${i})">✕</button>
     </div>`).join("");
   } else {
     optionsHTML = opts.map((o,i)=>`<div class="ai-option" style="position:relative">
-      <div><label class="field-label">CIDADE</label><input class="field-input" value="${esc(o.cidade||'')}" placeholder="ex: Curitiba" oninput="setAIOpt(${i},'cidade',this.value)"></div>
-      <div><label class="field-label">HOTEL</label><input class="field-input" value="${esc(o.hotel||'')}" placeholder="ex: Slaviero Centro" oninput="setAIOpt(${i},'hotel',this.value)"></div>
-      <div><label class="field-label">PREÇO/NOITE (R$)</label><input class="field-input" type="number" value="${esc(o.precoNoite||'')}" placeholder="ex: 280" oninput="setAIOpt(${i},'precoNoite',this.value)"></div>
-      <div><label class="field-label">AVALIAÇÃO</label><input class="field-input" value="${esc(o.avaliacao||'')}" placeholder="ex: 8.5" oninput="setAIOpt(${i},'avaliacao',this.value)"></div>
-      <div><label class="field-label">SERVIÇO</label><input class="field-input" value="${esc(o.servico||'')}" placeholder="ex: Booking" oninput="setAIOpt(${i},'servico',this.value)"></div>
-      <div><label class="field-label">OBSERVAÇÕES</label><input class="field-input" value="${esc(o.obs||'')}" placeholder="café incluso, piscina" oninput="setAIOpt(${i},'obs',this.value)"></div>
+      <div><label class="field-label">CIDADE</label><input class="field-input" value="${esc(o.cidade||'')}" placeholder="ex: Curitiba" onchange="setAIOpt(${i},'cidade',this.value)"></div>
+      <div><label class="field-label">HOTEL</label><input class="field-input" value="${esc(o.hotel||'')}" placeholder="ex: Slaviero Centro" onchange="setAIOpt(${i},'hotel',this.value)"></div>
+      <div><label class="field-label">PREÇO/NOITE (R$)</label><input class="field-input" type="number" value="${esc(o.precoNoite||'')}" placeholder="ex: 280" onchange="setAIOpt(${i},'precoNoite',this.value)"></div>
+      <div><label class="field-label">AVALIAÇÃO</label><input class="field-input" value="${esc(o.avaliacao||'')}" placeholder="ex: 8.5" onchange="setAIOpt(${i},'avaliacao',this.value)"></div>
+      <div><label class="field-label">SERVIÇO</label><input class="field-input" value="${esc(o.servico||'')}" placeholder="ex: Booking" onchange="setAIOpt(${i},'servico',this.value)"></div>
+      <div><label class="field-label">OBSERVAÇÕES</label><input class="field-input" value="${esc(o.obs||'')}" placeholder="café incluso, piscina" onchange="setAIOpt(${i},'obs',this.value)"></div>
       <button class="option-remove" onclick="removeAIOpt(${i})">✕</button>
     </div>`).join("");
   }

@@ -79,7 +79,7 @@ function render() {
   const c=document.getElementById("content");
   if(activeTab===0) c.innerHTML=renderFlights();
   if(activeTab===1) c.innerHTML=renderHotels();
-  if(activeTab===2) c.innerHTML=renderMeals();
+  if(activeTab===2) c.innerHTML=renderDiary();
   if(activeTab===3) c.innerHTML=renderExpenses();
   if(activeTab===4) c.innerHTML=renderAI();
 
